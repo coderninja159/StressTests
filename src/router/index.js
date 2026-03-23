@@ -1,0 +1,175 @@
+import { createRouter, createWebHistory } from "vue-router";
+import { useAuthStore } from "../stores/auth";
+import { pinia } from "../stores";
+
+import LoginView from "../views/auth/LoginView.vue";
+import RegisterView from "../views/auth/RegisterView.vue";
+import StudentDashboardView from "../views/student/DashboardView.vue";
+import StudentTestView from "../views/student/TestView.vue";
+import StudentResultView from "../views/student/ResultView.vue";
+import PsychologistDashboardView from "../views/psychologist/DashboardView.vue";
+import StudentsView from "../views/psychologist/StudentsView.vue";
+import StudentDetailView from "../views/psychologist/StudentDetailView.vue";
+import AdminDashboardView from "../views/admin/DashboardView.vue";
+import SchoolsView from "../views/admin/SchoolsView.vue";
+import PsychologistsView from "../views/admin/PsychologistsView.vue";
+import NotFoundView from "../views/NotFoundView.vue";
+
+const routes = [
+  {
+    path: "/",
+    redirect: "/auth/login",
+  },
+  {
+    path: "/auth/login",
+    name: "login",
+    component: LoginView,
+  },
+  {
+    path: "/auth/register",
+    name: "register",
+    component: RegisterView,
+  },
+  {
+    path: "/student/dashboard",
+    name: "student-dashboard",
+    component: StudentDashboardView,
+    meta: { requiresAuth: true, role: "student" },
+  },
+  {
+    path: "/student/test",
+    name: "student-test",
+    component: StudentTestView,
+    meta: { requiresAuth: true, role: "student" },
+  },
+  {
+    path: "/student/result",
+    name: "student-result",
+    component: StudentResultView,
+    meta: { requiresAuth: true, role: "student" },
+  },
+  {
+    path: "/psychologist/dashboard",
+    name: "psychologist-dashboard",
+    component: PsychologistDashboardView,
+    meta: { requiresAuth: true, role: "psychologist" },
+  },
+  {
+    path: "/psychologist/students",
+    name: "psychologist-students",
+    component: StudentsView,
+    meta: { requiresAuth: true, role: "psychologist" },
+  },
+  {
+    path: "/psychologist/students/:id",
+    name: "psychologist-student-detail",
+    component: StudentDetailView,
+    meta: { requiresAuth: true, role: "psychologist" },
+  },
+  {
+    path: "/admin",
+    redirect: "/admin/dashboard",
+  },
+  {
+    path: "/admin/dashboard",
+    name: "admin-dashboard",
+    component: AdminDashboardView,
+    meta: { requiresAuth: true, role: "admin" },
+  },
+  {
+    path: "/admin/schools",
+    name: "admin-schools",
+    component: SchoolsView,
+    meta: { requiresAuth: true, role: "admin" },
+  },
+  {
+    path: "/admin/psychologists",
+    name: "admin-psychologists",
+    component: PsychologistsView,
+    meta: { requiresAuth: true, role: "admin" },
+  },
+  {
+    path: "/:pathMatch(.*)*",
+    name: "not-found",
+    component: NotFoundView,
+  },
+];
+
+const router = createRouter({
+  history: createWebHistory(),
+  routes,
+});
+
+const roleHomeMap = {
+  student: "/student/dashboard",
+  psychologist: "/psychologist/dashboard",
+  admin: "/admin/dashboard",
+};
+
+router.beforeEach(async (to) => {
+  const authStore = useAuthStore(pinia);
+
+  await authStore.fetchCurrentUser();
+  const user = authStore.currentUser;
+
+  if (to.name === "login") {
+    if (user) {
+      return roleHomeMap[user.role] || "/auth/login";
+    }
+    return true;
+  }
+
+  if (to.name === "register") {
+    if (user) {
+      return roleHomeMap[user.role] || "/student/dashboard";
+    }
+    return true;
+  }
+
+  if (to.name === "not-found") {
+    return true;
+  }
+
+  if (to.path.startsWith("/admin")) {
+    if (!user) {
+      return "/auth/login";
+    }
+    if (user.role !== "admin") {
+      return roleHomeMap[user.role] || "/auth/login";
+    }
+    return true;
+  }
+
+  if (to.path.startsWith("/psychologist")) {
+    if (!user) {
+      return "/auth/login";
+    }
+    if (user.role !== "psychologist") {
+      return roleHomeMap[user.role] || "/auth/login";
+    }
+    return true;
+  }
+
+  if (to.path.startsWith("/student")) {
+    if (!user) {
+      return "/auth/login";
+    }
+    if (user.role !== "student") {
+      return roleHomeMap[user.role] || "/auth/login";
+    }
+    return true;
+  }
+
+  if (to.meta.requiresAuth) {
+    if (!user) {
+      return "/auth/login";
+    }
+    if (to.meta.role && user.role !== to.meta.role) {
+      return roleHomeMap[user.role] || "/auth/login";
+    }
+  }
+
+  return true;
+});
+
+export default router;
