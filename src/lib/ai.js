@@ -1,6 +1,7 @@
 import axios from "axios";
 
-const DEEPSEEK_URL = "https://api.deepseek.com/chat/completions";
+const AI_URL = "https://api.groq.com/openai/v1/chat/completions";
+const AI_MODEL = "llama-3.1-8b-instant";
 
 function getApiKey() {
   return import.meta.env.VITE_DEEPSEEK_API_KEY?.trim() || "";
@@ -8,15 +9,13 @@ function getApiKey() {
 
 async function postChat({ system, user }) {
   const apiKey = getApiKey();
-  if (!apiKey) {
-    return null;
-  }
+  if (!apiKey) return null;
 
   try {
     const { data } = await axios.post(
-      DEEPSEEK_URL,
+      AI_URL,
       {
-        model: "deepseek-chat",
+        model: AI_MODEL,
         messages: [
           { role: "system", content: system },
           { role: "user", content: user },
@@ -40,16 +39,8 @@ async function postChat({ system, user }) {
   }
 }
 
-/**
- * O'quvchi uchun AI izohi (psixologik yoki portret).
- * @param {object} categoryScores — results.category_scores
- * @param {string} riskLevel — psixologik: xavf darajasi matni; portret: asosiy tur sarlavhasi
- * @param {'psychological'|'portrait'} testType
- */
 export async function getStudentExplanation(categoryScores, riskLevel, testType) {
-  if (!categoryScores || !testType) {
-    return null;
-  }
+  if (!categoryScores || !testType) return null;
 
   const d = categoryScores.delinquency?.percentage ?? 0;
   const a = categoryScores.addiction?.percentage ?? 0;
@@ -115,16 +106,8 @@ function riskUz(risk) {
   return String(risk || "—");
 }
 
-/**
- * Psixolog uchun professional tahlil (faqat psixologik kontekst).
- * @param {object} categoryScores
- * @param {string} riskLevel — 'normal'|'medium'|'high'
- * @param {{ age?: number|null, className?: string|null }} studentInfo
- */
 export async function getProfessionalAnalysis(categoryScores, riskLevel, studentInfo) {
-  if (!categoryScores) {
-    return null;
-  }
+  if (!categoryScores) return null;
 
   const age = studentInfo?.age ?? "—";
   const className = studentInfo?.className ?? "—";

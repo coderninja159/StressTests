@@ -16,20 +16,9 @@ import PsychologistsView from "../views/admin/PsychologistsView.vue";
 import NotFoundView from "../views/NotFoundView.vue";
 
 const routes = [
-  {
-    path: "/",
-    redirect: "/auth/login",
-  },
-  {
-    path: "/auth/login",
-    name: "login",
-    component: LoginView,
-  },
-  {
-    path: "/auth/register",
-    name: "register",
-    component: RegisterView,
-  },
+  { path: "/", redirect: "/auth/login" },
+  { path: "/auth/login", name: "login", component: LoginView },
+  { path: "/auth/register", name: "register", component: RegisterView },
   {
     path: "/student/dashboard",
     name: "student-dashboard",
@@ -66,10 +55,7 @@ const routes = [
     component: StudentDetailView,
     meta: { requiresAuth: true, role: "psychologist" },
   },
-  {
-    path: "/admin",
-    redirect: "/admin/dashboard",
-  },
+  { path: "/admin", redirect: "/admin/dashboard" },
   {
     path: "/admin/dashboard",
     name: "admin-dashboard",
@@ -88,11 +74,7 @@ const routes = [
     component: PsychologistsView,
     meta: { requiresAuth: true, role: "admin" },
   },
-  {
-    path: "/:pathMatch(.*)*",
-    name: "not-found",
-    component: NotFoundView,
-  },
+  { path: "/:pathMatch(.*)*", name: "not-found", component: NotFoundView },
 ];
 
 const router = createRouter({
@@ -106,67 +88,46 @@ const roleHomeMap = {
   admin: "/admin/dashboard",
 };
 
+// Himoya shart emas sahifalar
+const publicRoutes = ["login", "register", "not-found"];
+
 router.beforeEach(async (to) => {
   const authStore = useAuthStore(pinia);
 
-  await authStore.fetchCurrentUser();
+  // Public sahifalarga har doim o'tish mumkin (fetchCurrentUser chaqirmasdan)
+  if (publicRoutes.includes(to.name)) {
+    // Agar allaqachon kirgan bo'lsa, o'z dashboardiga yo'naltir
+    if (authStore.isAuthenticated) {
+      const user = authStore.currentUser;
+      return roleHomeMap[user.role] || "/auth/login";
+    }
+    return true;
+  }
+
+  // Himoyalangan sahifalar uchun:
+  // Faqat user yo'q bo'lganda fetchCurrentUser chaqir
+  if (!authStore.isAuthenticated) {
+    await authStore.fetchCurrentUser();
+  }
+
   const user = authStore.currentUser;
 
-  if (to.name === "login") {
-    if (user) {
-      return roleHomeMap[user.role] || "/auth/login";
-    }
-    return true;
+  // User hali ham yo'q — login ga
+  if (!user) {
+    return "/auth/login";
   }
 
-  if (to.name === "register") {
-    if (user) {
-      return roleHomeMap[user.role] || "/student/dashboard";
-    }
-    return true;
+  // Role tekshirish
+  if (to.path.startsWith("/admin") && user.role !== "admin") {
+    return roleHomeMap[user.role] || "/auth/login";
   }
 
-  if (to.name === "not-found") {
-    return true;
+  if (to.path.startsWith("/psychologist") && user.role !== "psychologist") {
+    return roleHomeMap[user.role] || "/auth/login";
   }
 
-  if (to.path.startsWith("/admin")) {
-    if (!user) {
-      return "/auth/login";
-    }
-    if (user.role !== "admin") {
-      return roleHomeMap[user.role] || "/auth/login";
-    }
-    return true;
-  }
-
-  if (to.path.startsWith("/psychologist")) {
-    if (!user) {
-      return "/auth/login";
-    }
-    if (user.role !== "psychologist") {
-      return roleHomeMap[user.role] || "/auth/login";
-    }
-    return true;
-  }
-
-  if (to.path.startsWith("/student")) {
-    if (!user) {
-      return "/auth/login";
-    }
-    if (user.role !== "student") {
-      return roleHomeMap[user.role] || "/auth/login";
-    }
-    return true;
-  }
-
-  if (to.meta.requiresAuth) {
-    if (!user) {
-      return "/auth/login";
-    }
-    if (to.meta.role && user.role !== to.meta.role) {
-      return roleHomeMap[user.role] || "/auth/login";
-    }
+  if (to.path.startsWith("/student") && user.role !== "student") {
+    return roleHomeMap[user.role] || "/auth/login";
   }
 
   return true;

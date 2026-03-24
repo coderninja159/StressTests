@@ -21,6 +21,12 @@ function percentToRiskLevel(percentage) {
   return "high";
 }
 
+// Massivdan n ta random element olish
+function pickRandom(arr, n) {
+  const shuffled = [...arr].sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, Math.min(n, shuffled.length));
+}
+
 export const useTestStore = defineStore("test", () => {
   const currentTest = ref(null);
   const questions = ref([]);
@@ -33,17 +39,13 @@ export const useTestStore = defineStore("test", () => {
   const totalQuestions = computed(() => questions.value.length);
 
   const currentQuestion = computed(() => {
-    if (!questions.value.length) {
-      return null;
-    }
+    if (!questions.value.length) return null;
     return questions.value[currentQuestionIndex.value] || null;
   });
 
   const portraitOptionsForCurrent = computed(() => {
     const q = currentQuestion.value;
-    if (!q || currentTest.value !== "portrait") {
-      return [];
-    }
+    if (!q || currentTest.value !== "portrait") return [];
     return answerOptionsByQuestionId.value[q.id] || [];
   });
 
@@ -84,32 +86,56 @@ export const useTestStore = defineStore("test", () => {
         .eq("is_active", true)
         .order("order_num", { ascending: true });
 
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
 
       if (!qs?.length) {
-        throw new Error("Savollar topilmadi. Avval ma'lumotlarni yuklang (seedQuestions).");
+        throw new Error("Savollar topilmadi.");
       }
 
-      questions.value = qs;
+      let selectedQuestions = [];
 
+      if (testType === "psychological") {
+        // 5 ta kategoriyadan har biridan 3 ta random → jami 15 ta
+        const categories = [
+          "lie_scale",
+          "delinquency",
+          "addiction",
+          "aggression",
+          "self_harm",
+        ];
+
+        categories.forEach((cat) => {
+          const catQs = qs.filter((q) => q.category === cat);
+          const picked = pickRandom(catQs, 3);
+          selectedQuestions.push(...picked);
+        });
+
+        // Aralashtiramiz — foydalanuvchi kategoriyani sezmasin
+        selectedQuestions = selectedQuestions.sort(() => Math.random() - 0.5);
+
+      } else if (testType === "portrait") {
+        // 25 ta savoldan 15 ta random
+        selectedQuestions = pickRandom(qs, 15);
+
+      } else {
+        selectedQuestions = qs;
+      }
+
+      questions.value = selectedQuestions;
+
+      // Portrait uchun answer_options yuklash
       if (testType === "portrait") {
-        const ids = qs.map((q) => q.id);
+        const ids = selectedQuestions.map((q) => q.id);
         const { data: opts, error: optErr } = await supabase
           .from("answer_options")
           .select("*")
           .in("question_id", ids);
 
-        if (optErr) {
-          throw optErr;
-        }
+        if (optErr) throw optErr;
 
         const map = {};
         for (const row of opts || []) {
-          if (!map[row.question_id]) {
-            map[row.question_id] = [];
-          }
+          if (!map[row.question_id]) map[row.question_id] = [];
           map[row.question_id].push(row);
         }
         for (const id of Object.keys(map)) {
@@ -132,10 +158,7 @@ export const useTestStore = defineStore("test", () => {
   };
 
   const setPsychologicalAnswer = (questionId, value) => {
-    answers.value = {
-      ...answers.value,
-      [questionId]: value,
-    };
+    answers.value = { ...answers.value, [questionId]: value };
   };
 
   const setPortraitAnswer = (questionId, option) => {
@@ -221,7 +244,8 @@ export const useTestStore = defineStore("test", () => {
       }
     }
 
-    const overallPercentage = worstPercent < 0 ? 0 : Math.round(worstPercent * 10) / 10;
+    const overallPercentage =
+      worstPercent < 0 ? 0 : Math.round(worstPercent * 10) / 10;
     const overallRisk = percentToRiskLevel(overallPercentage);
 
     categoryScores.summary = {
@@ -230,8 +254,10 @@ export const useTestStore = defineStore("test", () => {
       worst_category: worstCategory,
     };
 
-    const totalScore =
-      RISK_CATEGORIES.reduce((sum, k) => sum + (byCategory[k]?.score || 0), 0);
+    const totalScore = RISK_CATEGORIES.reduce(
+      (sum, k) => sum + (byCategory[k]?.score || 0),
+      0
+    );
 
     return {
       risk_level: overallRisk,
@@ -241,19 +267,13 @@ export const useTestStore = defineStore("test", () => {
   };
 
   const buildPortraitPayload = () => {
-    const totals = {
-      leadership: 0,
-      social: 0,
-      intellectual: 0,
-      emotional: 0,
-    };
+    const totals = { leadership: 0, social: 0, intellectual: 0, emotional: 0 };
 
     for (const q of questions.value) {
       const ans = answers.value[q.id];
-      if (!ans?.personality_type) {
-        continue;
-      }
-      totals[ans.personality_type] = (totals[ans.personality_type] || 0) + (ans.points || 0);
+      if (!ans?.personality_type) continue;
+      totals[ans.personality_type] =
+        (totals[ans.personality_type] || 0) + (ans.points || 0);
     }
 
     const sum = Object.values(totals).reduce((a, b) => a + b, 0);
@@ -261,7 +281,6 @@ export const useTestStore = defineStore("test", () => {
 
     let winner = order[0];
     let best = totals.leadership;
-
     for (const t of order) {
       if (totals[t] > best) {
         best = totals[t];
@@ -272,19 +291,23 @@ export const useTestStore = defineStore("test", () => {
     const category_scores = {
       leadership: {
         score: totals.leadership,
-        percentage: sum > 0 ? Math.round((totals.leadership / sum) * 1000) / 10 : 0,
+        percentage:
+          sum > 0 ? Math.round((totals.leadership / sum) * 1000) / 10 : 0,
       },
       social: {
         score: totals.social,
-        percentage: sum > 0 ? Math.round((totals.social / sum) * 1000) / 10 : 0,
+        percentage:
+          sum > 0 ? Math.round((totals.social / sum) * 1000) / 10 : 0,
       },
       intellectual: {
         score: totals.intellectual,
-        percentage: sum > 0 ? Math.round((totals.intellectual / sum) * 1000) / 10 : 0,
+        percentage:
+          sum > 0 ? Math.round((totals.intellectual / sum) * 1000) / 10 : 0,
       },
       emotional: {
         score: totals.emotional,
-        percentage: sum > 0 ? Math.round((totals.emotional / sum) * 1000) / 10 : 0,
+        percentage:
+          sum > 0 ? Math.round((totals.emotional / sum) * 1000) / 10 : 0,
       },
       total_points: sum,
     };
@@ -335,18 +358,16 @@ export const useTestStore = defineStore("test", () => {
     clearError();
 
     try {
-      let insertRow;
-
       if (testType === "psychological") {
-        insertRow = buildPsychologicalPayload();
+        const payload = buildPsychologicalPayload();
         const { data, error } = await supabase
           .from("results")
           .insert({
             user_id: userId,
             test_type: "psychological",
-            total_score: insertRow.total_score,
-            risk_level: insertRow.risk_level,
-            category_scores: insertRow.category_scores,
+            total_score: payload.total_score,
+            risk_level: payload.risk_level,
+            category_scores: payload.category_scores,
             personality_type: null,
             ai_explanation: null,
             ai_professional: null,
@@ -354,35 +375,29 @@ export const useTestStore = defineStore("test", () => {
           .select("id")
           .single();
 
-        if (error) {
-          throw error;
-        }
-
+        if (error) throw error;
         await router.push({ path: "/student/result", query: { id: data.id } });
         resetForSelection();
         return data.id;
       }
 
-      insertRow = buildPortraitPayload();
+      const payload = buildPortraitPayload();
       const { data, error } = await supabase
         .from("results")
         .insert({
           user_id: userId,
           test_type: "portrait",
-          total_score: insertRow.total_score,
+          total_score: payload.total_score,
           risk_level: null,
-          category_scores: insertRow.category_scores,
-          personality_type: insertRow.personality_type,
+          category_scores: payload.category_scores,
+          personality_type: payload.personality_type,
           ai_explanation: null,
           ai_professional: null,
         })
         .select("id")
         .single();
 
-      if (error) {
-        throw error;
-      }
-
+      if (error) throw error;
       await router.push({ path: "/student/result", query: { id: data.id } });
       resetForSelection();
       return data.id;

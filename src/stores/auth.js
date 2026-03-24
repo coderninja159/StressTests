@@ -46,21 +46,13 @@ export const useAuthStore = defineStore("auth", () => {
     isLoading.value = true;
     clearError();
 
-    if (!supabase) {
-      errorMessage.value = missingSupabaseMessage;
-      isLoading.value = false;
-      return;
-    }
-
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
 
       const { data: profile, error: profileError } = await supabase
         .from("users")
@@ -88,21 +80,13 @@ export const useAuthStore = defineStore("auth", () => {
     isLoading.value = true;
     clearError();
 
-    if (!supabase) {
-      errorMessage.value = missingSupabaseMessage;
-      isLoading.value = false;
-      return;
-    }
-
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
 
       const { data: profile, error: profileError } = await supabase
         .from("users")
@@ -130,12 +114,6 @@ export const useAuthStore = defineStore("auth", () => {
     isLoading.value = true;
     clearError();
 
-    if (!supabase) {
-      errorMessage.value = missingSupabaseMessage;
-      isLoading.value = false;
-      return;
-    }
-
     try {
       const { data, error } = await supabase
         .from("schools")
@@ -144,9 +122,7 @@ export const useAuthStore = defineStore("auth", () => {
         .eq("is_active", true)
         .single();
 
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
 
       return {
         schoolId: data.id,
@@ -164,12 +140,6 @@ export const useAuthStore = defineStore("auth", () => {
     isLoading.value = true;
     clearError();
 
-    if (!supabase) {
-      errorMessage.value = missingSupabaseMessage;
-      isLoading.value = false;
-      return;
-    }
-
     try {
       const { data, error } = await supabase
         .from("users")
@@ -183,6 +153,9 @@ export const useAuthStore = defineStore("auth", () => {
       }
 
       user.value = data;
+      // Student sessiyasini saqlash
+      localStorage.setItem("student_session", JSON.stringify(data));
+
       await router.push("/student/dashboard");
       return data;
     } catch (error) {
@@ -197,12 +170,6 @@ export const useAuthStore = defineStore("auth", () => {
   const registerStudent = async ({ fullName, age, className, schoolId }) => {
     isLoading.value = true;
     clearError();
-
-    if (!supabase) {
-      errorMessage.value = missingSupabaseMessage;
-      isLoading.value = false;
-      return;
-    }
 
     try {
       const studentId = await generateStudentId();
@@ -220,11 +187,12 @@ export const useAuthStore = defineStore("auth", () => {
         .select("*")
         .single();
 
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
 
       user.value = data;
+      // Student sessiyasini saqlash
+      localStorage.setItem("student_session", JSON.stringify(data));
+
       return studentId;
     } catch (error) {
       errorMessage.value = "Ro'yxatdan o'tishda xatolik yuz berdi.";
@@ -238,20 +206,27 @@ export const useAuthStore = defineStore("auth", () => {
     isLoading.value = true;
     clearError();
 
-    if (!supabase) {
-      user.value = null;
-      isLoading.value = false;
-      return null;
-    }
-
     try {
+      // Avval Supabase auth tekshirish (admin va psixolog uchun)
       const { data, error } = await supabase.auth.getUser();
 
       if (error || !data.user) {
+        // Supabase auth yo'q — student sessiyasini tekshir
+        const studentSession = localStorage.getItem("student_session");
+        if (studentSession) {
+          try {
+            const studentData = JSON.parse(studentSession);
+            user.value = studentData;
+            return studentData;
+          } catch {
+            localStorage.removeItem("student_session");
+          }
+        }
         user.value = null;
         return null;
       }
 
+      // Supabase auth bor — admin yoki psixolog
       const { data: profile, error: profileError } = await supabase
         .from("users")
         .select("*")
@@ -266,6 +241,17 @@ export const useAuthStore = defineStore("auth", () => {
       user.value = profile;
       return profile;
     } catch (error) {
+      // Xato bo'lsa student sessiyasini tekshir
+      const studentSession = localStorage.getItem("student_session");
+      if (studentSession) {
+        try {
+          const studentData = JSON.parse(studentSession);
+          user.value = studentData;
+          return studentData;
+        } catch {
+          localStorage.removeItem("student_session");
+        }
+      }
       user.value = null;
       return null;
     } finally {
@@ -277,25 +263,20 @@ export const useAuthStore = defineStore("auth", () => {
     isLoading.value = true;
     clearError();
 
-    if (!supabase) {
-      user.value = null;
-      await router.push("/auth/login");
-      isLoading.value = false;
-      return;
-    }
-
     try {
-      const { error } = await supabase.auth.signOut();
+      // Student sessiyasini o'chirish
+      localStorage.removeItem("student_session");
 
-      if (error) {
-        throw error;
-      }
+      // Supabase auth sessiyasini o'chirish (admin/psixolog uchun)
+      await supabase.auth.signOut();
 
       user.value = null;
       await router.push("/auth/login");
     } catch (error) {
-      errorMessage.value = "Chiqishda xatolik yuz berdi.";
-      throw error;
+      // Xato bo'lsa ham logout qilish
+      user.value = null;
+      localStorage.removeItem("student_session");
+      await router.push("/auth/login");
     } finally {
       isLoading.value = false;
     }
