@@ -1,17 +1,37 @@
 <template>
   <div class="test-page">
+    <div class="test-bg-orb orb-1"></div>
+    <div class="test-bg-orb orb-2"></div>
     <div v-if="!testStore.currentTest && !testStore.isLoading" class="selection">
-      <h1>Testni tanlang</h1>
-      <p class="lead">O'zingizga mos test turini bitta tanlang va boshlang.</p>
+      <div class="selection-head">
+        <div>
+          <p class="kicker">StressTest Lab</p>
+          <h1>Testni tanlang</h1>
+          <p class="lead">O'zingizga mos test turini tanlang va baholashni boshlang.</p>
+        </div>
+        <div class="selection-badges">
+          <span class="badge badge-brand">AI izoh</span>
+          <span class="badge badge-accent">Xavfsiz jarayon</span>
+          <span class="badge badge-gray">Natija darhol</span>
+        </div>
+      </div>
 
       <div class="cards">
         <button type="button" class="card" @click="pickPsychological">
+          <div class="card-icon brand">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.46 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.46 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2Z"/></svg>
+          </div>
           <h2>Psixologik test</h2>
           <p class="meta">75 savol • 20–25 daqiqa • Stress va xavf darajasini aniqlaydi</p>
+          <p class="meta-sub">5 yo'nalish bo'yicha chuqur baholash va vizual natija</p>
         </button>
         <button type="button" class="card" @click="pickPortrait">
+          <div class="card-icon accent">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2s8 4 8 10-8 10-8 10-8-4-8-10 8-10 8-10Z"/><path d="M12 7v5l3 2"/></svg>
+          </div>
           <h2>Psixologik portret testi</h2>
           <p class="meta">25 savol • 10 daqiqa • Shaxsiyat turini aniqlaydi</p>
+          <p class="meta-sub">4 profil bo'yicha muvozanat va kuchli tomonlar tahlili</p>
         </button>
       </div>
 
@@ -24,7 +44,7 @@
     </div>
 
     <div v-else-if="testStore.currentTest && testStore.currentQuestion" class="session">
-      <div class="top-bar">
+      <div class="top-bar card-shell">
         <button type="button" class="link-btn" :disabled="testStore.isLoading" @click="cancelTest">
           ← Test tanloviga
         </button>
@@ -34,55 +54,80 @@
         <span class="progress-text">{{ progressCurrent }} / {{ testStore.totalQuestions }}</span>
       </div>
 
-      <div class="question-card">
-        <p class="question-text">{{ testStore.currentQuestion.question_text }}</p>
+      <div class="session-grid">
+        <aside class="session-side card-shell">
+          <h3>Jarayon</h3>
+          <ul>
+            <li>
+              <span class="key">Turi</span>
+              <span class="val">{{ currentTest === "psychological" ? "Psixologik" : "Portret" }}</span>
+            </li>
+            <li>
+              <span class="key">Savol</span>
+              <span class="val">{{ progressCurrent }} / {{ testStore.totalQuestions }}</span>
+            </li>
+            <li>
+              <span class="key">Tayyorlik</span>
+              <span class="val">{{ Math.round(progressPercent) }}%</span>
+            </li>
+          </ul>
+          <div class="tip-box">
+            <p class="tip-title">Tavsiyalar</p>
+            <p>Har bir savolga tabiiy holatingizga mos javob bering. Tez, lekin o'ylab javob berish aniq natija beradi.</p>
+          </div>
+        </aside>
 
-        <div v-if="testStore.currentTest === 'psychological'" class="answers psych">
-          <button
-            v-for="opt in psychOptions"
-            :key="opt.value"
-            type="button"
-            class="answer-btn"
-            :class="{ selected: psychValue === opt.value }"
-            :disabled="testStore.isLoading"
-            @click="testStore.setPsychologicalAnswer(testStore.currentQuestion.id, opt.value)"
-          >
-            {{ opt.label }}
-          </button>
-        </div>
+        <div class="question-card card-shell">
+          <p class="question-label">Savol #{{ progressCurrent }}</p>
+          <p class="question-text">{{ testStore.currentQuestion.question_text }}</p>
 
-        <div v-else class="answers portrait">
-          <label
-            v-for="opt in testStore.portraitOptionsForCurrent"
-            :key="opt.id"
-            class="radio-card"
-            :class="{ selected: portraitSelectedId === opt.id }"
-          >
-            <input
-              type="radio"
-              class="sr-only"
-              :name="'q-' + testStore.currentQuestion.id"
-              :value="opt.id"
-              :checked="portraitSelectedId === opt.id"
-              @change="testStore.setPortraitAnswer(testStore.currentQuestion.id, opt)"
-            />
-            <span>{{ opt.option_text }}</span>
-          </label>
-        </div>
+          <div v-if="testStore.currentTest === 'psychological'" class="answers psych">
+            <button
+              v-for="opt in psychOptions"
+              :key="opt.value"
+              type="button"
+              class="answer-btn"
+              :class="{ selected: psychValue === opt.value }"
+              :disabled="testStore.isLoading"
+              @click="testStore.setPsychologicalAnswer(testStore.currentQuestion.id, opt.value)"
+            >
+              {{ opt.label }}
+            </button>
+          </div>
 
-        <p v-if="testStore.errorMessage" class="error">{{ testStore.errorMessage }}</p>
+          <div v-else class="answers portrait">
+            <label
+              v-for="opt in testStore.portraitOptionsForCurrent"
+              :key="opt.id"
+              class="radio-card"
+              :class="{ selected: portraitSelectedId === opt.id }"
+            >
+              <input
+                type="radio"
+                class="sr-only"
+                :name="'q-' + testStore.currentQuestion.id"
+                :value="opt.id"
+                :checked="portraitSelectedId === opt.id"
+                @change="testStore.setPortraitAnswer(testStore.currentQuestion.id, opt)"
+              />
+              <span>{{ opt.option_text }}</span>
+            </label>
+          </div>
 
-        <div class="actions">
-          <button
-            type="button"
-            class="primary"
-            :disabled="!canProceed || testStore.isLoading"
-            @click="onPrimary"
-          >
-            <span v-if="testStore.isLoading">Yuklanmoqda...</span>
-            <span v-else-if="isLastQuestion">Natijani ko'rish</span>
-            <span v-else>Keyingi</span>
-          </button>
+          <p v-if="testStore.errorMessage" class="error">{{ testStore.errorMessage }}</p>
+
+          <div class="actions">
+            <button
+              type="button"
+              class="primary"
+              :disabled="!canProceed || testStore.isLoading"
+              @click="onPrimary"
+            >
+              <span v-if="testStore.isLoading">Yuklanmoqda...</span>
+              <span v-else-if="isLastQuestion">Natijani ko'rish</span>
+              <span v-else>Keyingi</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -186,10 +231,66 @@ onMounted(() => {
 
 <style scoped>
 .test-page {
-  min-height: 100vh;
-  padding: var(--space-5);
-  max-width: 720px;
+  min-height: 100dvh;
+  padding: var(--s-7);
+  max-width: 1360px;
   margin: 0 auto;
+  position: relative;
+}
+
+.test-bg-orb {
+  position: fixed;
+  border-radius: 50%;
+  pointer-events: none;
+  filter: blur(3px);
+  animation: floatOrb 10s ease-in-out infinite;
+}
+.orb-1 {
+  width: 340px;
+  height: 340px;
+  top: -100px;
+  left: -120px;
+  background: radial-gradient(circle, rgba(79,70,229,0.18), transparent 70%);
+}
+.orb-2 {
+  width: 260px;
+  height: 260px;
+  right: -70px;
+  bottom: 20px;
+  background: radial-gradient(circle, rgba(16,185,129,0.14), transparent 70%);
+  animation-delay: 1s;
+}
+
+.selection-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s-5);
+  margin-bottom: var(--s-6);
+}
+
+.kicker {
+  font-size: .75rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--brand);
+  font-weight: 700;
+  margin-bottom: var(--s-2);
+}
+
+.selection-badges {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  flex-wrap: wrap;
+}
+
+.card-shell {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-2xl);
+  box-shadow: var(--sh-md);
+  backdrop-filter: blur(6px);
 }
 
 .selection h1 {
@@ -203,25 +304,42 @@ onMounted(() => {
 
 .cards {
   display: grid;
-  gap: var(--space-4);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s-4);
 }
 
 .card {
   text-align: left;
-  padding: var(--space-5);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--color-border);
-  background: var(--color-surface);
-  box-shadow: var(--shadow-sm);
+  padding: var(--s-6);
+  border-radius: var(--r-2xl);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: var(--sh-sm);
   cursor: pointer;
-  transition:
-    border-color 0.15s,
-    box-shadow 0.15s;
+  transition: var(--t-spr);
+}
+
+.card-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: var(--r-md);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: var(--s-3);
+}
+.card-icon.brand { background: var(--brand-soft); color: var(--brand); }
+.card-icon.accent { background: var(--accent-soft); color: var(--accent); }
+.meta-sub {
+  font-size: .83rem;
+  color: var(--text-3);
+  margin-top: var(--s-2);
 }
 
 .card:hover {
-  border-color: var(--color-primary);
-  box-shadow: var(--shadow-md);
+  border-color: var(--brand);
+  box-shadow: var(--sh-lg);
+  transform: translateY(-4px);
 }
 
 .card h2 {
@@ -260,8 +378,9 @@ onMounted(() => {
 .session .top-bar {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
-  margin-bottom: var(--space-4);
+  gap: var(--s-3);
+  margin-bottom: var(--s-4);
+  padding: var(--s-4) var(--s-5);
 }
 
 .link-btn {
@@ -280,16 +399,16 @@ onMounted(() => {
 
 .progress-line {
   flex: 1;
-  height: 8px;
-  background: var(--color-border);
+  height: 10px;
+  background: var(--border);
   border-radius: 999px;
   overflow: hidden;
 }
 
 .progress-fill {
   height: 100%;
-  background: var(--color-primary);
-  transition: width 0.2s ease;
+  background: linear-gradient(90deg, var(--brand-light), var(--brand));
+  transition: width 0.28s var(--ease);
 }
 
 .progress-text {
@@ -299,11 +418,75 @@ onMounted(() => {
   text-align: right;
 }
 
+.session-grid {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: var(--s-4);
+}
+
+.session-side {
+  padding: var(--s-5);
+  align-self: start;
+}
+
+.session-side h3 {
+  margin: 0 0 var(--s-4);
+}
+
+.session-side ul {
+  display: grid;
+  gap: var(--s-3);
+}
+
+.session-side li {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s-2);
+}
+
+.session-side .key {
+  color: var(--text-3);
+  font-size: .85rem;
+}
+
+.session-side .val {
+  font-weight: 700;
+  color: var(--text);
+}
+
+.tip-box {
+  margin-top: var(--s-5);
+  padding: var(--s-4);
+  border-radius: var(--r-lg);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+
+.tip-title {
+  font-size: .82rem;
+  font-weight: 700;
+  color: var(--brand);
+  margin-bottom: var(--s-2);
+}
+
+.tip-box p {
+  font-size: .86rem;
+  margin: 0;
+  line-height: 1.6;
+}
+
 .question-card {
-  background: var(--color-surface);
-  border-radius: var(--radius-lg);
-  padding: var(--space-6);
-  box-shadow: var(--shadow-md);
+  padding: var(--s-6);
+  animation: slideUp .22s var(--ease-out);
+}
+
+.question-label {
+  font-size: .78rem;
+  font-weight: 700;
+  color: var(--brand);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  margin-bottom: var(--s-3);
 }
 
 .question-text {
@@ -323,17 +506,24 @@ onMounted(() => {
   flex: 1;
   min-width: 100px;
   padding: 14px 18px;
-  border-radius: var(--radius-sm);
-  border: 2px solid var(--color-border);
-  background: #fff;
+  border-radius: var(--r-lg);
+  border: 2px solid var(--border);
+  background: var(--surface);
   cursor: pointer;
   font-weight: 600;
+  transition: var(--t-spr);
+}
+
+.answer-btn:hover {
+  transform: translateY(-2px);
+  border-color: var(--brand-light);
 }
 
 .answer-btn.selected {
-  border-color: var(--color-primary);
-  background: color-mix(in srgb, var(--color-primary) 12%, white);
-  color: var(--color-text);
+  border-color: var(--brand);
+  background: var(--brand-soft);
+  color: var(--brand);
+  box-shadow: 0 0 0 3px var(--brand-glow);
 }
 
 .portrait {
@@ -345,16 +535,23 @@ onMounted(() => {
   display: flex;
   align-items: center;
   padding: 14px 16px;
-  border-radius: var(--radius-sm);
-  border: 2px solid var(--color-border);
-  background: #fff;
+  border-radius: var(--r-lg);
+  border: 2px solid var(--border);
+  background: var(--surface);
   cursor: pointer;
   font-weight: 500;
+  transition: var(--t-spr);
+}
+
+.radio-card:hover {
+  transform: translateX(4px);
+  border-color: var(--brand-light);
 }
 
 .radio-card.selected {
-  border-color: var(--color-primary);
-  background: color-mix(in srgb, var(--color-primary) 10%, white);
+  border-color: var(--brand);
+  background: var(--brand-soft);
+  box-shadow: 0 0 0 3px var(--brand-glow);
 }
 
 .sr-only {
@@ -376,8 +573,8 @@ onMounted(() => {
   width: 100%;
   padding: 14px;
   border: none;
-  border-radius: var(--radius-sm);
-  background: var(--color-primary);
+  border-radius: var(--r-xl);
+  background: linear-gradient(135deg, var(--brand), var(--brand-hover));
   color: #fff;
   font-weight: 700;
   cursor: pointer;
@@ -392,5 +589,21 @@ onMounted(() => {
   color: var(--color-danger);
   margin-top: var(--space-3);
   font-size: 0.95rem;
+}
+
+@keyframes floatOrb {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(16px); }
+}
+
+@media (max-width: 1080px) {
+  .session-grid { grid-template-columns: 1fr; }
+  .session-side { order: 2; }
+  .cards { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 768px) {
+  .test-page { padding: var(--s-4); }
+  .selection-head { flex-direction: column; }
 }
 </style>

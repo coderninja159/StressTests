@@ -1,5 +1,7 @@
 <template>
   <div class="result-page">
+    <div class="result-bg-orb orb-a"></div>
+    <div class="result-bg-orb orb-b"></div>
     <div v-if="loading" class="loading-wrap">
       <div class="spinner" aria-hidden="true" />
       <p>Natija yuklanmoqda...</p>
@@ -11,8 +13,9 @@
     </div>
 
     <template v-else-if="result">
-      <div class="card">
+      <div class="card hero-card">
         <template v-if="result.test_type === 'psychological'">
+          <p class="kicker">Natija Markazi</p>
           <h1>Psixologik test natijasi</h1>
           <p class="sub">Umumiy xavf darajasi (eng yuqori kategoriya bo‘yicha)</p>
           <div class="badge" :class="'risk-' + (result.risk_level || 'normal')">
@@ -45,12 +48,16 @@
 
           <p v-if="lieNote" class="lie-note">{{ lieNote }}</p>
 
-          <p class="disclaimer">
-            ⚠️ Bu test tibbiy tashxis emas. Muammo sezilsa mutaxassisga murojaat qiling.
-          </p>
+          <div class="alert alert-warn disclaimer">
+            <svg class="alert-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/>
+            </svg>
+            <span>Bu test tibbiy tashxis emas. Muammo sezilsa mutaxassisga murojaat qiling.</span>
+          </div>
         </template>
 
         <template v-else>
+          <p class="kicker">Natija Markazi</p>
           <h1>Psixologik portret</h1>
           <p class="portrait-lead">{{ portraitTitle }}</p>
           <p class="portrait-desc">{{ portraitDescription }}</p>
@@ -76,16 +83,19 @@
             </div>
           </section>
 
-          <p class="disclaimer">
-            ⚠️ Bu test tibbiy tashxis emas.
-          </p>
+          <div class="alert alert-warn disclaimer">
+            <svg class="alert-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/>
+            </svg>
+            <span>Bu test tibbiy tashxis emas.</span>
+          </div>
         </template>
 
         <div class="ai-advice-card">
-          <h2 class="ai-title">🤖 AI Maslahat</h2>
+          <h2 class="ai-title">AI Maslahat</h2>
           <div v-if="aiLoading" class="ai-loading">
             <div class="spinner ai-spin" aria-hidden="true" />
-            <span>🤖 AI tahlil qilyapti...</span>
+            <span>AI tahlil qilyapti...</span>
           </div>
           <div v-else-if="aiParagraphs.length" class="ai-body">
             <p v-for="(para, idx) in aiParagraphs" :key="idx">{{ para }}</p>
@@ -140,10 +150,10 @@ const lieNote = computed(() => {
 const portraitTitle = computed(() => {
   const t = result.value?.personality_type;
   const map = {
-    leadership: "🦅 Yo‘lboshchi",
-    social: "🤝 Muloqotchi",
-    intellectual: "🧠 Mutafakkir",
-    emotional: "💛 Sezgir",
+    leadership: "Yo‘lboshchi",
+    social: "Muloqotchi",
+    intellectual: "Mutafakkir",
+    emotional: "Sezgir",
   };
   return map[t] || "Natija";
 });
@@ -290,221 +300,119 @@ watch(
 
 <style scoped>
 .result-page {
-  min-height: 100vh;
-  padding: var(--space-5);
-  max-width: 640px;
+  min-height: 100dvh;
+  padding: var(--s-7);
+  max-width: 1320px;
   margin: 0 auto;
+  position: relative;
 }
+
+.result-bg-orb {
+  position: fixed;
+  border-radius: 50%;
+  pointer-events: none;
+  animation: floatOrb 11s ease-in-out infinite;
+}
+.orb-a { width: 340px; height: 340px; left: -120px; top: -100px; background: radial-gradient(circle, rgba(79,70,229,0.14), transparent 70%); }
+.orb-b { width: 280px; height: 280px; right: -100px; bottom: -40px; background: radial-gradient(circle, rgba(16,185,129,0.12), transparent 70%); animation-delay: 1s; }
 
 .loading-wrap {
   display: grid;
   place-items: center;
-  gap: var(--space-3);
-  padding: var(--space-6);
+  gap: var(--s-3);
+  padding: var(--s-6);
 }
 
 .spinner {
   width: 40px;
   height: 40px;
-  border: 3px solid var(--color-border);
-  border-top-color: var(--color-primary);
+  border: 3px solid var(--border);
+  border-top-color: var(--brand);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
 
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes floatOrb { 0%,100% { transform: translateY(0); } 50% { transform: translateY(14px); } }
 
 .card {
-  background: var(--color-surface);
-  border-radius: var(--radius-lg);
-  padding: var(--space-6);
-  box-shadow: var(--shadow-md);
+  background: var(--surface);
+  border-radius: var(--r-2xl);
+  padding: var(--s-6);
+  box-shadow: var(--sh-lg);
+  border: 1px solid var(--border);
 }
 
-h1 {
-  margin: 0 0 var(--space-2);
-  font-size: 1.35rem;
-}
+.hero-card { animation: slideUp .28s var(--ease-out); }
 
-.sub {
-  margin: 0 0 var(--space-3);
-  color: var(--color-muted);
-}
-
-.badge {
-  display: inline-block;
-  padding: 8px 16px;
-  border-radius: 999px;
+.kicker {
+  font-size: .76rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--brand);
   font-weight: 700;
-  margin-bottom: var(--space-5);
+  margin: 0 0 var(--s-2);
 }
 
-.risk-normal {
-  background: color-mix(in srgb, #22c55e 25%, white);
-  color: #166534;
-}
+h1 { margin: 0 0 var(--s-2); font-size: 1.35rem; }
+.sub { margin: 0 0 var(--s-3); color: var(--text-3); }
 
-.risk-medium {
-  background: color-mix(in srgb, #eab308 28%, white);
-  color: #854d0e;
-}
+.badge { display: inline-block; padding: 8px 16px; border-radius: 999px; font-weight: 700; margin-bottom: var(--s-5); }
+.risk-normal { background: color-mix(in srgb, #22c55e 25%, white); color: #166534; }
+.risk-medium { background: color-mix(in srgb, #eab308 28%, white); color: #854d0e; }
+.risk-high { background: color-mix(in srgb, #ef4444 22%, white); color: #991b1b; }
 
-.risk-high {
-  background: color-mix(in srgb, #ef4444 22%, white);
-  color: #991b1b;
-}
+.portrait-lead { font-size: 1.35rem; font-weight: 800; margin: 0 0 var(--s-3); }
+.portrait-desc { margin: 0 0 var(--s-5); line-height: 1.55; color: var(--text); }
+.bars h2 { font-size: 1rem; margin: 0 0 var(--s-3); }
+.bar-row { margin-bottom: var(--s-4); padding: var(--s-2) 0; }
+.bar-head { display: flex; justify-content: space-between; gap: var(--s-2); font-size: 0.9rem; margin-bottom: 6px; }
+.bar-meta { color: var(--text-3); font-variant-numeric: tabular-nums; }
+.bar-track { height: 10px; background: var(--border); border-radius: 999px; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 999px; transition: width 0.35s ease; }
+.bar-fill.lvl-normal { background: linear-gradient(90deg, #34d399, #22c55e); }
+.bar-fill.lvl-medium { background: linear-gradient(90deg, #facc15, #eab308); }
+.bar-fill.lvl-high { background: linear-gradient(90deg, #fb7185, #ef4444); }
+.bar-fill.highlight { background: linear-gradient(90deg, var(--brand-light), var(--brand)); }
 
-.portrait-lead {
-  font-size: 1.35rem;
-  font-weight: 800;
-  margin: 0 0 var(--space-3);
-}
-
-.portrait-desc {
-  margin: 0 0 var(--space-5);
-  line-height: 1.55;
-  color: var(--color-text);
-}
-
-.bars h2 {
-  font-size: 1rem;
-  margin: 0 0 var(--space-3);
-}
-
-.bar-row {
-  margin-bottom: var(--space-4);
-}
-
-.bar-head {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--space-2);
-  font-size: 0.9rem;
-  margin-bottom: 6px;
-}
-
-.bar-meta {
-  color: var(--color-muted);
-  font-variant-numeric: tabular-nums;
-}
-
-.bar-track {
-  height: 10px;
-  background: var(--color-border);
-  border-radius: 999px;
-  overflow: hidden;
-}
-
-.bar-fill {
-  height: 100%;
-  border-radius: 999px;
-  transition: width 0.35s ease;
-}
-
-.bar-fill.lvl-normal {
-  background: #22c55e;
-}
-
-.bar-fill.lvl-medium {
-  background: #eab308;
-}
-
-.bar-fill.lvl-high {
-  background: #ef4444;
-}
-
-.bar-fill.highlight {
-  background: var(--color-primary);
-}
-
-.lie-note {
-  font-size: 0.9rem;
-  color: var(--color-muted);
-  margin: var(--space-4) 0;
-}
-
-.disclaimer {
-  margin: var(--space-5) 0 var(--space-3);
-  font-size: 0.95rem;
-  color: var(--color-muted);
-  line-height: 1.5;
-}
+.lie-note { font-size: 0.9rem; color: var(--text-3); margin: var(--s-4) 0; }
+.disclaimer { margin: var(--s-5) 0 var(--s-3); font-size: 0.95rem; line-height: 1.5; }
 
 .ai-advice-card {
-  padding: var(--space-5);
-  border-radius: var(--radius-md);
-  background: var(--color-bg);
-  border: 1px solid var(--color-border);
-  margin-bottom: var(--space-5);
+  padding: var(--s-5);
+  border-radius: var(--r-xl);
+  background: linear-gradient(145deg, var(--n-950), var(--n-850));
+  border: 1px solid rgba(99,102,241,0.22);
+  margin-bottom: var(--s-5);
+  color: white;
+  position: relative;
+  overflow: hidden;
 }
-
-.ai-title {
-  margin: 0 0 var(--space-3);
-  font-size: 1.15rem;
+.ai-advice-card::before {
+  content: '';
+  position: absolute;
+  width: 220px;
+  height: 220px;
+  right: -60px;
+  top: -100px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(99,102,241,0.28), transparent 70%);
 }
+.ai-title { margin: 0 0 var(--s-3); font-size: 1.15rem; color: #c7d2fe; position: relative; }
+.ai-loading { display: flex; align-items: center; gap: var(--s-3); color: rgba(255,255,255,0.75); font-weight: 600; }
+.ai-spin { width: 28px; height: 28px; border-width: 3px; }
+.ai-body p { margin: 0 0 var(--s-3); line-height: 1.55; color: rgba(255,255,255,0.82); position: relative; }
+.ai-body p:last-child { margin-bottom: 0; }
+.ai-fallback { margin: 0; color: rgba(255,255,255,0.7); }
 
-.ai-loading {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  color: var(--color-muted);
-  font-weight: 600;
-}
+.footer-actions { display: flex; flex-wrap: wrap; gap: var(--s-3); }
+.btn { padding: 12px 18px; border-radius: var(--r-md); border: none; font-weight: 600; cursor: pointer; }
+.btn.primary { background: var(--brand); color: #fff; }
+.btn.secondary { background: var(--surface-3); color: var(--text); }
+.error-card { text-align: center; }
+.error-card p { color: var(--risk); margin-bottom: var(--s-4); }
 
-.ai-spin {
-  width: 28px;
-  height: 28px;
-  border-width: 3px;
-}
-
-.ai-body p {
-  margin: 0 0 var(--space-3);
-  line-height: 1.55;
-}
-
-.ai-body p:last-child {
-  margin-bottom: 0;
-}
-
-.ai-fallback {
-  margin: 0;
-  color: var(--color-muted);
-}
-
-.footer-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-3);
-}
-
-.btn {
-  padding: 12px 18px;
-  border-radius: var(--radius-sm);
-  border: none;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.btn.primary {
-  background: var(--color-primary);
-  color: #fff;
-}
-
-.btn.secondary {
-  background: var(--color-border);
-  color: var(--color-text);
-}
-
-.error-card {
-  text-align: center;
-}
-
-.error-card p {
-  color: var(--color-danger);
-  margin-bottom: var(--space-4);
+@media (max-width: 900px) {
+  .result-page { padding: var(--s-4); }
 }
 </style>

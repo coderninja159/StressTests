@@ -2,6 +2,7 @@
   <div class="layout">
     <AdminSidebar />
     <main class="main">
+      <MobileHeader />
       <div class="toolbar">
         <h1>Psixologlar</h1>
         <BaseButton variant="primary" @click="openModal">Yangi psixolog qo'shish</BaseButton>
@@ -85,7 +86,10 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from "vue";
 
+
+
 import AdminSidebar from "../../components/layout/AdminSidebar.vue";
+import MobileHeader from "../../components/layout/MobileHeader.vue";
 import BaseButton from "../../components/ui/BaseButton.vue";
 import BaseInput from "../../components/ui/BaseInput.vue";
 import LoadingSpinner from "../../components/ui/LoadingSpinner.vue";
@@ -316,8 +320,8 @@ onMounted(() => {
 
 .main {
   flex: 1;
-  padding: var(--space-5);
-  max-width: 1100px;
+  padding: var(--s-6);
+  width: 100%;
 }
 
 .toolbar {
@@ -339,10 +343,11 @@ h1 {
 }
 
 .table-wrap {
-  background: var(--color-surface);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--color-border);
+  background: var(--surface);
+  border-radius: var(--r-xl);
+  border: 1px solid var(--border);
   overflow: auto;
+  box-shadow: var(--sh-sm);
 }
 
 .table {
@@ -359,7 +364,7 @@ h1 {
 }
 
 .table th {
-  background: var(--color-bg);
+  background: var(--surface-2);
 }
 
 .btn-danger {
@@ -394,10 +399,10 @@ h1 {
 
 .modal {
   width: min(440px, 100%);
-  background: var(--color-surface);
-  border-radius: var(--radius-lg);
-  padding: var(--space-5);
-  box-shadow: var(--shadow-md);
+  background: var(--surface);
+  border-radius: var(--r-2xl);
+  padding: var(--s-6);
+  box-shadow: var(--sh-xl);
 }
 
 .modal h2 {
@@ -428,7 +433,15 @@ h1 {
 .modal-actions {
   display: flex;
   justify-content: flex-end;
-  gap: var(--space-2);
-  margin-top: var(--space-4);
+  gap: var(--s-2);
+  margin-top: var(--s-4);
+}
+
+@media (max-width: 768px) {
+  .main { padding: var(--s-4); }
+}
+
+@media (max-width: 520px) {
+  .table { min-width: 760px; }
 }
 </style>

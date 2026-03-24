@@ -2,6 +2,7 @@
   <div class="layout">
     <AdminSidebar />
     <main class="main">
+      <MobileHeader />
       <h1>Bosh sahifa</h1>
 
       <div v-if="!supabaseOk" class="alert">Supabase sozlanmagan.</div>
@@ -30,6 +31,37 @@
             <span class="num">{{ counts.testsToday }}</span>
           </div>
         </div>
+
+        <section class="section">
+          <h2>7 kunlik test faolligi</h2>
+          <div class="chart-wrap">
+            <div v-for="d in weeklySeries" :key="d.label" class="chart-col">
+              <div class="chart-bar-wrap">
+                <div class="chart-bar" :style="{ height: d.height + '%' }"></div>
+              </div>
+              <div class="chart-val">{{ d.value }}</div>
+              <div class="chart-lbl">{{ d.label }}</div>
+            </div>
+          </div>
+        </section>
+
+        <section class="section">
+          <h2>Risk taqsimoti</h2>
+          <div class="risk-grid">
+            <div class="risk-item">
+              <p>Yuqori</p>
+              <strong>{{ riskStats.high }}</strong>
+            </div>
+            <div class="risk-item">
+              <p>O'rta</p>
+              <strong>{{ riskStats.medium }}</strong>
+            </div>
+            <div class="risk-item">
+              <p>Normal</p>
+              <strong>{{ riskStats.normal }}</strong>
+            </div>
+          </div>
+        </section>
 
         <section class="section">
           <h2>Oxirgi maktablar</h2>
@@ -70,6 +102,7 @@
 import { onMounted, ref } from "vue";
 
 import AdminSidebar from "../../components/layout/AdminSidebar.vue";
+import MobileHeader from "../../components/layout/MobileHeader.vue";
 import LoadingSpinner from "../../components/ui/LoadingSpinner.vue";
 import { supabase } from "../../lib/supabase";
 
@@ -83,6 +116,8 @@ const counts = ref({
   testsToday: 0,
 });
 const schoolRows = ref([]);
+const riskStats = ref({ high: 0, medium: 0, normal: 0 });
+const weeklySeries = ref([]);
 
 function startOfTodayIso() {
   const d = new Date();
@@ -94,6 +129,13 @@ function endOfTodayIso() {
   const d = new Date();
   d.setHours(23, 59, 59, 999);
   return d.toISOString();
+}
+
+function startOfDayOffset(daysBefore) {
+  const d = new Date();
+  d.setDate(d.getDate() - daysBefore);
+  d.setHours(0, 0, 0, 0);
+  return d;
 }
 
 async function load() {
@@ -187,6 +229,31 @@ async function load() {
         hasPsychologist,
       };
     });
+
+    const since = startOfDayOffset(6).toISOString();
+    const { data: riskRows, error: e7 } = await supabase
+      .from("results")
+      .select("risk_level, taken_at, test_type")
+      .gte("taken_at", since);
+    if (e7) throw e7;
+
+    const rr = riskRows || [];
+    riskStats.value = {
+      high: rr.filter((r) => r.test_type === "psychological" && r.risk_level === "high").length,
+      medium: rr.filter((r) => r.test_type === "psychological" && r.risk_level === "medium").length,
+      normal: rr.filter((r) => r.test_type === "psychological" && r.risk_level === "normal").length,
+    };
+
+    const days = [];
+    for (let i = 6; i >= 0; i -= 1) {
+      const day = startOfDayOffset(i);
+      const label = day.toLocaleDateString("uz-UZ", { weekday: "short" });
+      const dayStr = day.toISOString().slice(0, 10);
+      const value = rr.filter((r) => String(r.taken_at).slice(0, 10) === dayStr).length;
+      days.push({ label, value });
+    }
+    const max = Math.max(...days.map((d) => d.value), 1);
+    weeklySeries.value = days.map((d) => ({ ...d, height: (d.value / max) * 100 }));
   } catch {
     errorMessage.value = "Statistikani yuklashda xatolik yuz berdi.";
   } finally {
@@ -208,8 +275,8 @@ onMounted(() => {
 
 .main {
   flex: 1;
-  padding: var(--space-5);
-  max-width: 1000px;
+  padding: var(--s-6);
+  width: 100%;
 }
 
 h1 {
@@ -238,12 +305,18 @@ h2 {
 }
 
 .stat {
-  padding: var(--space-4);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-sm);
+  padding: var(--s-5);
+  border-radius: var(--r-xl);
+  box-shadow: var(--sh-sm);
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: var(--s-2);
+  transition: var(--t-spr);
+}
+
+.stat:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--sh-md);
 }
 
 .stat.blue {
@@ -282,11 +355,65 @@ h2 {
   margin-top: var(--space-4);
 }
 
+.chart-wrap {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: var(--s-3);
+  padding: var(--s-4);
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
+  background: var(--surface);
+  box-shadow: var(--sh-sm);
+}
+
+.chart-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.chart-bar-wrap {
+  height: 120px;
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+}
+
+.chart-bar {
+  width: 100%;
+  border-radius: var(--r-sm);
+  min-height: 6px;
+  background: linear-gradient(180deg, var(--brand-light), var(--brand));
+  transform-origin: bottom;
+  animation: growBar 0.5s var(--ease-out);
+}
+
+.chart-val { font-weight: 700; font-size: .85rem; }
+.chart-lbl { color: var(--text-3); font-size: .76rem; text-transform: capitalize; }
+
+.risk-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--s-3);
+}
+
+.risk-item {
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
+  padding: var(--s-4);
+  background: var(--surface);
+}
+
+.risk-item p { margin: 0 0 var(--s-2); color: var(--text-3); font-size: .82rem; }
+.risk-item strong { font-size: 1.35rem; font-family: 'Space Grotesk', sans-serif; }
+
 .table-wrap {
-  background: var(--color-surface);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--color-border);
+  background: var(--surface);
+  border-radius: var(--r-xl);
+  border: 1px solid var(--border);
   overflow: auto;
+  box-shadow: var(--sh-sm);
 }
 
 .table {
@@ -303,7 +430,7 @@ h2 {
 }
 
 .table th {
-  background: var(--color-bg);
+  background: var(--surface-2);
 }
 
 code {
@@ -321,8 +448,23 @@ code {
 }
 
 .muted {
-  padding: var(--space-3);
+  padding: var(--s-3);
   margin: 0;
-  color: var(--color-muted);
+  color: var(--text-3);
+}
+
+@media (max-width: 768px) {
+  .main { padding: var(--s-4); }
+}
+
+@media (max-width: 520px) {
+  .risk-grid { grid-template-columns: 1fr; }
+  .chart-wrap { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .table { min-width: 680px; }
+}
+
+@keyframes growBar {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
 }
 </style>

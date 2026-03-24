@@ -1,9 +1,13 @@
 <template>
-  <div class="dash">
-    <header class="top">
-      <h1>Salom, {{ studentName }}! 👋</h1>
+  <div class="student-page">
+    <section class="hero">
+      <div>
+        <p class="hero-kicker">Student Dashboard</p>
+        <h1>Salom, {{ studentName }}</h1>
+        <p class="hero-sub">Stress holatini kuzatish, testlarni boshlash va natijalarni bir joyda ko'rish mumkin.</p>
+      </div>
       <BaseButton variant="secondary" @click="onLogout">Chiqish</BaseButton>
-    </header>
+    </section>
 
     <div v-if="!supabaseOk" class="alert">Supabase sozlanmagan.</div>
     <LoadingSpinner v-else-if="loading" text="Ma'lumotlar yuklanmoqda..." />
@@ -11,16 +15,22 @@
     <template v-else>
       <p v-if="loadError" class="alert">{{ loadError }}</p>
 
-      <BaseCard class="mb">
-        <h2 class="card-title">O'quvchi ma'lumotlari</h2>
-        <ul class="info-list">
-          <li><span>Student ID:</span> {{ studentIdDisplay }}</li>
-          <li><span>Sinf:</span> {{ classDisplay }}</li>
-          <li><span>Yosh:</span> {{ ageDisplay }}</li>
-        </ul>
-      </BaseCard>
+      <div class="quick-stats">
+        <BaseCard class="stat-card">
+          <p class="stat-label">Student ID</p>
+          <p class="stat-value">{{ studentIdDisplay }}</p>
+        </BaseCard>
+        <BaseCard class="stat-card">
+          <p class="stat-label">Sinf</p>
+          <p class="stat-value">{{ classDisplay }}</p>
+        </BaseCard>
+        <BaseCard class="stat-card">
+          <p class="stat-label">Yosh</p>
+          <p class="stat-value">{{ ageDisplay }}</p>
+        </BaseCard>
+      </div>
 
-      <BaseCard class="mb">
+      <BaseCard class="panel mb">
         <h2 class="card-title">Oxirgi test natijasi</h2>
         <template v-if="latestResult">
           <ul class="info-list">
@@ -33,12 +43,16 @@
         <p v-else class="muted">Hali test topshirilmagan.</p>
       </BaseCard>
 
-      <BaseButton variant="primary" class="big-btn" @click="goTest">Yangi test boshlash</BaseButton>
+      <div class="cta-row">
+        <BaseButton variant="primary" class="big-btn" @click="goTest">Yangi test boshlash</BaseButton>
+      </div>
 
-      <p class="disclaimer">
-        ⚠️ Diqqat: Bu test tibbiy tashxis emas. Muammo sezilsa ishonchli kattaga yoki mutaxassisga
-        murojaat qiling.
-      </p>
+      <div class="alert alert-warn disclaimer">
+        <svg class="alert-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/>
+        </svg>
+        <span>Diqqat: bu test tibbiy tashxis emas. Muammo sezilsa ishonchli katta yoki mutaxassisga murojaat qiling.</span>
+      </div>
     </template>
   </div>
 </template>
@@ -167,29 +181,80 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.dash {
-  max-width: 640px;
-  margin: 0 auto;
-  padding: var(--space-5);
-  min-height: 100vh;
+.student-page {
+  min-height: 100dvh;
+  padding: var(--s-7);
+  background:
+    radial-gradient(900px 450px at -10% -10%, rgba(79,70,229,0.11), transparent 70%),
+    radial-gradient(700px 400px at 110% 0%, rgba(16,185,129,0.09), transparent 72%),
+    var(--surface-2);
 }
 
-.top {
+.hero {
   display: flex;
-  flex-wrap: wrap;
+  justify-content: space-between;
   align-items: flex-start;
   justify-content: space-between;
-  gap: var(--space-3);
-  margin-bottom: var(--space-5);
+  gap: var(--s-4);
+  margin-bottom: var(--s-6);
+  animation: slideUp 0.25s var(--ease-out);
+}
+
+.hero-kicker {
+  color: var(--brand);
+  font-weight: 700;
+  font-size: .78rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
 }
 
 h1 {
   margin: 0;
-  font-size: 1.5rem;
+  font-size: clamp(1.5rem, 2.5vw, 2rem);
 }
 
-.mb {
-  margin-bottom: var(--space-4);
+.hero-sub {
+  margin-top: var(--s-2);
+  max-width: 640px;
+}
+
+.quick-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--s-4);
+  margin-bottom: var(--s-5);
+}
+
+.stat-card {
+  border-radius: var(--r-xl);
+  border: 1px solid var(--border);
+  box-shadow: var(--sh-sm);
+  transition: var(--t-spr);
+}
+
+.stat-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--sh-md);
+}
+
+.stat-label {
+  font-size: .78rem;
+  color: var(--text-3);
+  margin: 0 0 var(--s-2);
+}
+
+.stat-value {
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: 800;
+  font-family: 'Space Grotesk', sans-serif;
+  color: var(--text);
+}
+
+.mb { margin-bottom: var(--s-4); }
+
+.panel {
+  border-radius: var(--r-2xl);
 }
 
 .card-title {
@@ -216,24 +281,33 @@ h1 {
 }
 
 .mt {
-  margin-top: var(--space-3);
+  margin-top: var(--s-3);
+}
+
+.cta-row {
+  display: flex;
+  justify-content: flex-start;
 }
 
 .big-btn {
-  width: 100%;
-  padding: 16px;
-  font-size: 1.05rem;
+  min-width: 260px;
+  width: auto;
+  font-size: 1rem;
 }
 
 .disclaimer {
-  margin-top: var(--space-5);
-  font-size: 0.9rem;
-  color: var(--color-muted);
-  line-height: 1.5;
+  margin-top: var(--s-5);
+  align-items: center;
 }
 
 .alert {
   color: var(--color-danger);
   font-weight: 600;
+}
+
+@media (max-width: 900px) {
+  .quick-stats { grid-template-columns: 1fr; }
+  .cta-row .big-btn { width: 100%; }
+  .student-page { padding: var(--s-5); }
 }
 </style>

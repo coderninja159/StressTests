@@ -2,6 +2,7 @@
   <div class="layout">
     <PsychologistSidebar />
     <main class="main">
+      <MobileHeader />
       <h1>Dashboard</h1>
 
       <div v-if="!schoolId" class="warn">
@@ -34,6 +35,33 @@
         </div>
 
         <section class="section">
+          <h2>7 kunlik faollik</h2>
+          <div class="chart-wrap">
+            <div v-for="d in weeklySeries" :key="d.label" class="chart-col">
+              <div class="chart-bar-wrap">
+                <div class="chart-bar" :style="{ height: d.height + '%' }"></div>
+              </div>
+              <div class="chart-val">{{ d.value }}</div>
+              <div class="chart-lbl">{{ d.label }}</div>
+            </div>
+          </div>
+        </section>
+
+        <section class="section">
+          <h2>Diqqat talab qiluvchi o'quvchilar</h2>
+          <div class="risk-table">
+            <div class="risk-row" v-for="row in topRiskRows" :key="row.user_id">
+              <div>
+                <strong>{{ row.studentName }}</strong>
+                <p>{{ row.className || "—" }}</p>
+              </div>
+              <span class="badge b-high">{{ Math.round(row.score) }}%</span>
+            </div>
+            <p v-if="!topRiskRows.length" class="muted">Hozircha yuqori xavf yo'q.</p>
+          </div>
+        </section>
+
+        <section class="section">
           <h2>Oxirgi testlar</h2>
           <p v-if="!recentRows.length" class="muted">Hozircha test natijalari yo'q.</p>
           <ul v-else class="list">
@@ -64,6 +92,7 @@
 import { computed, onMounted, ref } from "vue";
 
 import PsychologistSidebar from "../../components/layout/PsychologistSidebar.vue";
+import MobileHeader from "../../components/layout/MobileHeader.vue";
 import { supabase } from "../../lib/supabase";
 import { useAuthStore } from "../../stores/auth";
 
@@ -72,6 +101,7 @@ const authStore = useAuthStore();
 const loading = ref(true);
 const students = ref([]);
 const results = ref([]);
+const weeklySeries = ref([]);
 
 const schoolId = computed(() => authStore.currentUser?.school_id ?? null);
 
@@ -161,6 +191,21 @@ const recentRows = computed(() => {
   }));
 });
 
+const topRiskRows = computed(() => {
+  const arr = [];
+  for (const r of latestPsychByStudent.value.values()) {
+    const score = r?.category_scores?.summary?.overall_percentage ?? 0;
+    if (score < 60) continue;
+    arr.push({
+      ...r,
+      score,
+      studentName: studentNameById.value.get(r.user_id) || "—",
+      className: studentClassById.value.get(r.user_id),
+    });
+  }
+  return arr.sort((a, b) => b.score - a.score).slice(0, 5);
+});
+
 function testTypeLabel(t) {
   if (t === "psychological") return "Psixologik";
   if (t === "portrait") return "Portret";
@@ -201,6 +246,13 @@ function formatDate(iso) {
   }
 }
 
+function startOfDayOffset(daysBefore) {
+  const d = new Date();
+  d.setDate(d.getDate() - daysBefore);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
 async function load() {
   loading.value = true;
   students.value = [];
@@ -230,7 +282,7 @@ async function load() {
 
     const { data: res, error: e2 } = await supabase
       .from("results")
-      .select("id, user_id, test_type, risk_level, taken_at")
+      .select("id, user_id, test_type, risk_level, taken_at, category_scores")
       .in("user_id", studentIds.value)
       .order("taken_at", { ascending: false });
 
@@ -239,6 +291,17 @@ async function load() {
     }
 
     results.value = res || [];
+
+    const days = [];
+    for (let i = 6; i >= 0; i -= 1) {
+      const day = startOfDayOffset(i);
+      const dayStr = day.toISOString().slice(0, 10);
+      const label = day.toLocaleDateString("uz-UZ", { weekday: "short" });
+      const value = (res || []).filter((r) => String(r.taken_at).slice(0, 10) === dayStr).length;
+      days.push({ label, value });
+    }
+    const max = Math.max(...days.map((d) => d.value), 1);
+    weeklySeries.value = days.map((d) => ({ ...d, height: (d.value / max) * 100 }));
   } catch {
     students.value = [];
     results.value = [];
@@ -252,6 +315,7 @@ onMounted(() => {
 });
 </script>
 
+
 <style scoped>
 .layout {
   display: flex;
@@ -261,8 +325,8 @@ onMounted(() => {
 
 .main {
   flex: 1;
-  padding: var(--space-5);
-  max-width: 960px;
+  padding: var(--s-6);
+  width: 100%;
 }
 
 h1 {
@@ -309,12 +373,18 @@ h2 {
 }
 
 .stat-card {
-  padding: var(--space-4);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-sm);
+  padding: var(--s-5);
+  border-radius: var(--r-xl);
+  box-shadow: var(--sh-sm);
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: var(--s-2);
+  transition: var(--t-spr);
+}
+
+.stat-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--sh-md);
 }
 
 .stat-card.blue {
@@ -353,6 +423,61 @@ h2 {
   margin-top: var(--space-4);
 }
 
+.chart-wrap {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: var(--s-3);
+  padding: var(--s-4);
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
+  background: var(--surface);
+  box-shadow: var(--sh-sm);
+}
+
+.chart-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.chart-bar-wrap {
+  height: 120px;
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+}
+
+.chart-bar {
+  width: 100%;
+  border-radius: var(--r-sm);
+  min-height: 6px;
+  background: linear-gradient(180deg, #60a5fa, var(--brand));
+  transform-origin: bottom;
+  animation: growBar .5s var(--ease-out);
+}
+
+.chart-val { font-weight: 700; font-size: .85rem; }
+.chart-lbl { color: var(--text-3); font-size: .76rem; text-transform: capitalize; }
+
+.risk-table {
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
+  background: var(--surface);
+  box-shadow: var(--sh-sm);
+}
+
+.risk-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--s-4);
+  border-bottom: 1px solid var(--border);
+}
+
+.risk-row:last-child { border-bottom: 0; }
+.risk-row p { margin: 2px 0 0; color: var(--text-3); font-size: .8rem; }
+
 .muted {
   color: var(--color-muted);
   font-size: 0.95rem;
@@ -374,8 +499,15 @@ h2 {
   gap: var(--space-3);
   padding: var(--space-4);
   background: var(--color-surface);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--color-border);
+  border-radius: var(--r-xl);
+  border: 1px solid var(--border);
+  box-shadow: var(--sh-xs);
+  transition: var(--t);
+}
+
+.list-item:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--sh-sm);
 }
 
 .li-main {
@@ -425,7 +557,7 @@ h2 {
 
 .btn-sm {
   padding: 8px 14px;
-  border-radius: var(--radius-sm);
+  border-radius: var(--r-md);
   background: var(--color-primary);
   color: #fff;
   font-weight: 600;
@@ -435,6 +567,8 @@ h2 {
 }
 
 @media (max-width: 720px) {
+  .main { padding: var(--s-4); }
+  .chart-wrap { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .list-item {
     grid-template-columns: 1fr;
   }
@@ -442,5 +576,10 @@ h2 {
   .li-meta {
     align-items: flex-start;
   }
+}
+
+@keyframes growBar {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
 }
 </style>

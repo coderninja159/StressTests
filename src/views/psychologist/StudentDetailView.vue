@@ -2,6 +2,7 @@
   <div class="layout">
     <PsychologistSidebar />
     <main class="main">
+      <MobileHeader />
       <div v-if="loading" class="loading">
         <div class="spinner" />
         <span>Yuklanmoqda...</span>
@@ -133,6 +134,7 @@ import { computed, onMounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 
 import PsychologistSidebar from "../../components/layout/PsychologistSidebar.vue";
+import MobileHeader from "../../components/layout/MobileHeader.vue";
 import { getProfessionalAnalysis } from "../../lib/ai";
 import { supabase } from "../../lib/supabase";
 import { useAuthStore } from "../../stores/auth";
@@ -346,8 +348,8 @@ watch(
 
 .main {
   flex: 1;
-  padding: var(--space-5);
-  max-width: 800px;
+  padding: var(--s-6);
+  width: 100%;
 }
 
 .loading {
@@ -404,11 +406,17 @@ h3 {
 }
 
 .card {
-  background: var(--color-surface);
-  border-radius: var(--radius-md);
-  padding: var(--space-5);
-  margin-bottom: var(--space-4);
-  border: 1px solid var(--color-border);
+  background: var(--surface);
+  border-radius: var(--r-xl);
+  padding: var(--s-5);
+  margin-bottom: var(--s-4);
+  border: 1px solid var(--border);
+  box-shadow: var(--sh-sm);
+  transition: var(--t);
+}
+
+.card:hover {
+  box-shadow: var(--sh-md);
 }
 
 .card.flat {
@@ -534,8 +542,8 @@ h3 {
 
 .table-wrap {
   overflow: auto;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
 }
 
 .table {
@@ -571,10 +579,18 @@ h3 {
 }
 
 .focus-panel {
-  margin-top: var(--space-4);
-  padding: var(--space-4);
-  background: var(--color-bg);
-  border-radius: var(--radius-sm);
-  border: 1px dashed var(--color-border);
+  margin-top: var(--s-4);
+  padding: var(--s-4);
+  background: var(--surface-2);
+  border-radius: var(--r-lg);
+  border: 1px dashed var(--border);
+}
+
+@media (max-width: 768px) {
+  .main { padding: var(--s-4); }
+}
+
+@media (max-width: 520px) {
+  .table { min-width: 640px; }
 }
 </style>

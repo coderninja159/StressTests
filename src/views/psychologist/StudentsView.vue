@@ -2,6 +2,7 @@
   <div class="layout">
     <PsychologistSidebar />
     <main class="main">
+      <MobileHeader />
       <h1>O'quvchilar</h1>
 
       <div v-if="!schoolId" class="warn">Maktab biriktirilmagan.</div>
@@ -57,9 +58,14 @@
                   </span>
                 </td>
                 <td>
-                  <RouterLink class="link-btn" :to="'/psychologist/students/' + row.id">
-                    Ko'rish
-                  </RouterLink>
+                  <div class="row-actions">
+                    <RouterLink class="link-btn" :to="'/psychologist/students/' + row.id">
+                      Ko'rish
+                    </RouterLink>
+                    <button class="remove-btn" type="button" :disabled="deleteLoadingId === row.id" @click="removeStudent(row)">
+                      O'chirish
+                    </button>
+                  </div>
                 </td>
               </tr>
             </tbody>
@@ -75,6 +81,7 @@
 import { computed, onMounted, ref } from "vue";
 
 import PsychologistSidebar from "../../components/layout/PsychologistSidebar.vue";
+import MobileHeader from "../../components/layout/MobileHeader.vue";
 import { supabase } from "../../lib/supabase";
 import { useAuthStore } from "../../stores/auth";
 
@@ -85,6 +92,7 @@ const students = ref([]);
 const results = ref([]);
 const filterClass = ref("");
 const filterRisk = ref("all");
+const deleteLoadingId = ref(null);
 
 const schoolId = computed(() => authStore.currentUser?.school_id ?? null);
 
@@ -224,10 +232,29 @@ async function load() {
   }
 }
 
+async function removeStudent(row) {
+  if (!supabase) return;
+  const ok = confirm(`"${row.full_name}" o'quvchisini va uning test tarixini o'chirishni tasdiqlaysizmi?`);
+  if (!ok) return;
+  deleteLoadingId.value = row.id;
+  try {
+    const { error: rErr } = await supabase.from("results").delete().eq("user_id", row.id);
+    if (rErr) throw rErr;
+    const { error: uErr } = await supabase.from("users").delete().eq("id", row.id).eq("role", "student");
+    if (uErr) throw uErr;
+    await load();
+  } catch {
+    alert("O'quvchini o'chirishda xatolik yuz berdi.");
+  } finally {
+    deleteLoadingId.value = null;
+  }
+}
+
 onMounted(() => {
   load();
 });
 </script>
+
 
 <style scoped>
 .layout {
@@ -238,8 +265,9 @@ onMounted(() => {
 
 .main {
   flex: 1;
-  padding: var(--space-5);
+  padding: var(--s-6);
   overflow-x: auto;
+  width: 100%;
 }
 
 h1 {
@@ -296,10 +324,11 @@ h1 {
 }
 
 .table-wrap {
-  background: var(--color-surface);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--color-border);
+  background: var(--surface);
+  border-radius: var(--r-xl);
+  border: 1px solid var(--border);
   overflow: auto;
+  box-shadow: var(--sh-sm);
 }
 
 .table {
@@ -316,7 +345,7 @@ h1 {
 }
 
 .table th {
-  background: var(--color-bg);
+  background: var(--surface-2);
   font-weight: 700;
 }
 
@@ -359,9 +388,39 @@ h1 {
   font-size: 0.9rem;
 }
 
+.row-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.remove-btn {
+  display: inline-block;
+  padding: 6px 12px;
+  background: var(--risk-soft);
+  color: var(--risk);
+  border-radius: var(--r-md);
+  border: 1px solid #fecaca;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: var(--t-fast);
+}
+
+.remove-btn:hover { background: var(--risk); color: #fff; border-color: var(--risk); }
+.remove-btn:disabled { opacity: .6; cursor: not-allowed; }
+
 .empty {
-  padding: var(--space-4);
-  color: var(--color-muted);
+  padding: var(--s-4);
+  color: var(--text-3);
   margin: 0;
+}
+
+@media (max-width: 768px) {
+  .main { padding: var(--s-4); }
+}
+
+@media (max-width: 520px) {
+  .table { min-width: 780px; }
 }
 </style>
