@@ -184,10 +184,7 @@ onMounted(async () => {
 .student-page {
   min-height: 100dvh;
   padding: var(--s-7);
-  background:
-    radial-gradient(900px 450px at -10% -10%, rgba(79,70,229,0.11), transparent 70%),
-    radial-gradient(700px 400px at 110% 0%, rgba(16,185,129,0.09), transparent 72%),
-    var(--surface-2);
+  background: transparent;
 }
 
 .hero {

@@ -236,6 +236,7 @@ onMounted(() => {
   max-width: 1360px;
   margin: 0 auto;
   position: relative;
+  z-index: 1;
 }
 
 .test-bg-orb {
@@ -246,18 +247,20 @@ onMounted(() => {
   animation: floatOrb 10s ease-in-out infinite;
 }
 .orb-1 {
-  width: 340px;
-  height: 340px;
-  top: -100px;
-  left: -120px;
-  background: radial-gradient(circle, rgba(79,70,229,0.18), transparent 70%);
+  width: 380px;
+  height: 380px;
+  top: -120px;
+  left: -100px;
+  z-index: 0;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.14), transparent 68%);
 }
 .orb-2 {
-  width: 260px;
-  height: 260px;
-  right: -70px;
-  bottom: 20px;
-  background: radial-gradient(circle, rgba(16,185,129,0.14), transparent 70%);
+  width: 300px;
+  height: 300px;
+  right: -80px;
+  bottom: -40px;
+  z-index: 0;
+  background: radial-gradient(circle, rgba(45, 212, 191, 0.09), transparent 68%);
   animation-delay: 1s;
 }
 
@@ -286,11 +289,12 @@ onMounted(() => {
 }
 
 .card-shell {
-  background: var(--surface);
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
   border: 1px solid var(--border);
   border-radius: var(--r-2xl);
-  box-shadow: var(--sh-md);
-  backdrop-filter: blur(6px);
+  box-shadow: var(--sh-lg);
+  backdrop-filter: blur(14px) saturate(1.15);
+  -webkit-backdrop-filter: blur(14px) saturate(1.15);
 }
 
 .selection h1 {
@@ -571,13 +575,24 @@ onMounted(() => {
 
 .primary {
   width: 100%;
-  padding: 14px;
+  max-width: 420px;
+  margin-left: auto;
+  margin-right: auto;
+  display: block;
+  padding: 14px 20px;
   border: none;
   border-radius: var(--r-xl);
-  background: linear-gradient(135deg, var(--brand), var(--brand-hover));
+  background: linear-gradient(135deg, var(--brand-light), var(--brand));
   color: #fff;
   font-weight: 700;
   cursor: pointer;
+  box-shadow: var(--sh-brand);
+  transition: transform 0.2s var(--ease), box-shadow 0.2s var(--ease);
+}
+
+.primary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 40px rgba(99, 102, 241, 0.28);
 }
 
 .primary:disabled {

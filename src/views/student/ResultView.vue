@@ -313,8 +313,8 @@ watch(
   pointer-events: none;
   animation: floatOrb 11s ease-in-out infinite;
 }
-.orb-a { width: 340px; height: 340px; left: -120px; top: -100px; background: radial-gradient(circle, rgba(79,70,229,0.14), transparent 70%); }
-.orb-b { width: 280px; height: 280px; right: -100px; bottom: -40px; background: radial-gradient(circle, rgba(16,185,129,0.12), transparent 70%); animation-delay: 1s; }
+.orb-a { width: 340px; height: 340px; left: -120px; top: -100px; background: radial-gradient(circle, rgba(99, 102, 241, 0.16), transparent 70%); }
+.orb-b { width: 280px; height: 280px; right: -100px; bottom: -40px; background: radial-gradient(circle, rgba(45, 212, 191, 0.1), transparent 70%); animation-delay: 1s; }
 
 .loading-wrap {
   display: grid;

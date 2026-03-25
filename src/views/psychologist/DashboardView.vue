@@ -1,5 +1,5 @@
 <template>
-  <div class="layout">
+  <div class="layout psych-dashboard">
     <PsychologistSidebar />
     <main class="main">
       <MobileHeader />

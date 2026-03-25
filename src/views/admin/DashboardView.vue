@@ -1,5 +1,5 @@
 <template>
-  <div class="layout">
+  <div class="layout admin-dashboard">
     <AdminSidebar />
     <main class="main">
       <MobileHeader />

@@ -1,6 +1,6 @@
 <template>
-  <div class="sidebar-overlay" v-if="layoutStore.isSidebarOpen" @click="layoutStore.closeSidebar"></div>
-  <aside class="sidebar" :class="{ open: layoutStore.isSidebarOpen }">
+  <div class="dash-sidebar-overlay" v-if="layoutStore.isSidebarOpen" @click="layoutStore.closeSidebar"></div>
+  <aside class="dash-sidebar" :class="{ open: layoutStore.isSidebarOpen }">
     <div class="brand">StressTest</div>
     <p class="role">Admin paneli</p>
 
@@ -57,33 +57,40 @@ const onLogout = async () => {
 </script>
 
 <style scoped>
-.sidebar {
-  width: 240px;
+.dash-sidebar {
+  --dash-sidebar-w: 240px;
+  width: var(--dash-sidebar-w);
+  flex: 0 0 var(--dash-sidebar-w);
   min-height: 100vh;
   background: var(--color-surface);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
   border-right: 1px solid var(--color-border);
   padding: var(--space-5) var(--space-4);
   display: flex;
   flex-direction: column;
-  transition: transform 0.3s ease;
+  transition: transform 0.3s var(--ease, ease);
   z-index: 100;
+  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.12);
 }
 
 @media (max-width: 768px) {
-  .sidebar {
+  .dash-sidebar {
     position: fixed;
     top: 0;
     left: 0;
     height: 100%;
+    flex: none;
+    width: min(var(--dash-sidebar-w), 88vw);
     transform: translateX(-100%);
   }
 
-  .sidebar.open {
+  .dash-sidebar.open {
     transform: translateX(0);
   }
 }
 
-.sidebar-overlay {
+.dash-sidebar-overlay {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.5);
@@ -128,8 +135,15 @@ const onLogout = async () => {
 }
 
 .nav-link.active {
-  background: color-mix(in srgb, var(--color-primary) 14%, white);
-  border-color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 16%, transparent);
+  border-color: color-mix(in srgb, var(--color-primary) 45%, transparent);
+  color: var(--color-text);
+}
+
+:global([data-theme="dark"]) .nav-link.active {
+  background: rgba(129, 140, 248, 0.16);
+  border-color: rgba(165, 180, 252, 0.45);
+  color: #eceef8;
 }
 
 .footer {
@@ -154,13 +168,25 @@ const onLogout = async () => {
   padding: 10px 12px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--color-border);
-  background: #fff;
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  color: var(--color-text);
   font-weight: 600;
   cursor: pointer;
+  transition: var(--t, all 0.2s ease);
+}
+
+.logout:hover {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-primary) 35%, transparent);
 }
 
 .logout:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+:global([data-theme="dark"]) .dash-sidebar {
+  background: color-mix(in srgb, var(--sidebar-bg) 94%, transparent);
+  box-shadow: 4px 0 32px rgba(0, 0, 0, 0.35);
 }
 </style>
