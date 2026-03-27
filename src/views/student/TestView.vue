@@ -239,6 +239,41 @@ onMounted(() => {
   z-index: 1;
 }
 
+.selection {
+  display: grid;
+  gap: var(--s-5);
+  position: relative;
+  isolation: isolate;
+}
+
+.selection::before,
+.selection::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  border-radius: 999px;
+  z-index: -1;
+  filter: blur(10px);
+}
+
+.selection::before {
+  width: 340px;
+  height: 340px;
+  top: -140px;
+  left: -140px;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.2), transparent 70%);
+  animation: cornerDriftA 9.2s ease-in-out infinite;
+}
+
+.selection::after {
+  width: 300px;
+  height: 300px;
+  top: -120px;
+  right: -120px;
+  background: radial-gradient(circle, rgba(45, 212, 191, 0.14), transparent 70%);
+  animation: cornerDriftB 10.5s ease-in-out infinite;
+}
+
 .test-bg-orb {
   position: fixed;
   border-radius: 50%;
@@ -420,6 +455,7 @@ onMounted(() => {
   font-variant-numeric: tabular-nums;
   min-width: 4.5rem;
   text-align: right;
+  color: var(--text);
 }
 
 .session-grid {
@@ -428,9 +464,42 @@ onMounted(() => {
   gap: var(--s-4);
 }
 
+.session {
+  position: relative;
+  isolation: isolate;
+}
+
+.session::before,
+.session::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  border-radius: 999px;
+  z-index: -1;
+}
+
+.session::before {
+  width: 320px;
+  height: 320px;
+  top: -110px;
+  left: -110px;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.16), transparent 72%);
+  animation: cornerDriftA 10.4s ease-in-out infinite;
+}
+
+.session::after {
+  width: 280px;
+  height: 280px;
+  top: -95px;
+  right: -90px;
+  background: radial-gradient(circle, rgba(45, 212, 191, 0.12), transparent 72%);
+  animation: cornerDriftB 12s ease-in-out infinite;
+}
+
 .session-side {
   padding: var(--s-5);
   align-self: start;
+  min-height: 320px;
 }
 
 .session-side h3 {
@@ -482,6 +551,9 @@ onMounted(() => {
 .question-card {
   padding: var(--s-6);
   animation: slideUp .22s var(--ease-out);
+  min-height: 320px;
+  display: flex;
+  flex-direction: column;
 }
 
 .question-label {
@@ -515,6 +587,7 @@ onMounted(() => {
   background: var(--surface);
   cursor: pointer;
   font-weight: 600;
+  color: var(--text);
   transition: var(--t-spr);
 }
 
@@ -544,6 +617,7 @@ onMounted(() => {
   background: var(--surface);
   cursor: pointer;
   font-weight: 500;
+  color: var(--text);
   transition: var(--t-spr);
 }
 
@@ -571,6 +645,7 @@ onMounted(() => {
 
 .actions {
   margin-top: var(--space-5);
+  margin-top: auto;
 }
 
 .primary {
@@ -606,9 +681,25 @@ onMounted(() => {
   font-size: 0.95rem;
 }
 
+[data-theme="dark"] .card,
+[data-theme="dark"] .answer-btn,
+[data-theme="dark"] .radio-card {
+  color: #eef2ff;
+}
+
 @keyframes floatOrb {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(16px); }
+}
+
+@keyframes cornerDriftA {
+  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.88; }
+  50% { transform: translate(10px, 14px) scale(1.06); opacity: 1; }
+}
+
+@keyframes cornerDriftB {
+  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.74; }
+  50% { transform: translate(-12px, 10px) scale(1.08); opacity: 1; }
 }
 
 @media (max-width: 1080px) {

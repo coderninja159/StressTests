@@ -6,7 +6,9 @@
         <h1>Salom, {{ studentName }}</h1>
         <p class="hero-sub">Stress holatini kuzatish, testlarni boshlash va natijalarni bir joyda ko'rish mumkin.</p>
       </div>
-      <BaseButton variant="secondary" @click="onLogout">Chiqish</BaseButton>
+      <div class="hero-actions">
+        <BaseButton variant="secondary" @click="onLogout">Chiqish</BaseButton>
+      </div>
     </section>
 
     <div v-if="!supabaseOk" class="alert">Supabase sozlanmagan.</div>
@@ -53,6 +55,17 @@
         </svg>
         <span>Diqqat: bu test tibbiy tashxis emas. Muammo sezilsa ishonchli katta yoki mutaxassisga murojaat qiling.</span>
       </div>
+
+      <section class="extra-grid">
+        <BaseCard class="extra-card motion-card">
+          <h3>Kunlik tavsiya</h3>
+          <p>10-15 daqiqa yurish, chuqur nafas mashqlari va uxlash rejimini barqaror ushlash stressni sezilarli kamaytiradi.</p>
+        </BaseCard>
+        <BaseCard class="extra-card pulse-card">
+          <h3>Keyingi qadam</h3>
+          <p>Bugungi holatingizni yangilash uchun testni qayta boshlang yoki oxirgi natijani ochib AI izohni o'qing.</p>
+        </BaseCard>
+      </section>
     </template>
   </div>
 </template>
@@ -197,6 +210,11 @@ onMounted(async () => {
   animation: slideUp 0.25s var(--ease-out);
 }
 
+.hero-actions {
+  display: flex;
+  align-items: center;
+}
+
 .hero-kicker {
   color: var(--brand);
   font-weight: 700;
@@ -302,9 +320,63 @@ h1 {
   font-weight: 600;
 }
 
+.extra-grid {
+  margin-top: var(--s-5);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s-4);
+}
+
+.extra-card {
+  min-height: 156px;
+  position: relative;
+  overflow: hidden;
+}
+
+.extra-card h3 {
+  margin: 0 0 var(--s-2);
+  font-size: 1rem;
+}
+
+.extra-card p {
+  margin: 0;
+  font-size: 0.92rem;
+  color: var(--text-2);
+}
+
+.motion-card::after,
+.pulse-card::after {
+  content: "";
+  position: absolute;
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  right: -70px;
+  bottom: -80px;
+  pointer-events: none;
+}
+
+.motion-card::after {
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.2), transparent 68%);
+  animation: driftGlow 8.2s ease-in-out infinite;
+}
+
+.pulse-card::after {
+  background: radial-gradient(circle, rgba(45, 212, 191, 0.16), transparent 68%);
+  animation: driftGlow 9.4s ease-in-out infinite reverse;
+}
+
+@keyframes driftGlow {
+  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.8; }
+  50% { transform: translate(-12px, -16px) scale(1.08); opacity: 1; }
+}
+
 @media (max-width: 900px) {
   .quick-stats { grid-template-columns: 1fr; }
+  .extra-grid { grid-template-columns: 1fr; }
   .cta-row .big-btn { width: 100%; }
   .student-page { padding: var(--s-5); }
+  .hero-actions { width: 100%; }
+  .hero-actions :deep(.btn) { width: 100%; }
 }
 </style>

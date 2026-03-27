@@ -1157,6 +1157,19 @@ p  { color: var(--text-2); line-height: 1.75; }
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
 }
 
+[data-theme="dark"] .auth-box .field-label,
+[data-theme="dark"] .auth-box .field-hint,
+[data-theme="dark"] .auth-box .input-icon,
+[data-theme="dark"] .auth-box .input-trail,
+[data-theme="dark"] .auth-box .auth-tab:not(.active) {
+  color: var(--text-2);
+}
+
+[data-theme="dark"] .auth-shell svg,
+[data-theme="dark"] .register-shell svg {
+  color: #e8eeff;
+}
+
 /* Maktab kodi input */
 .code-row {
   display: flex;
@@ -1481,6 +1494,37 @@ p  { color: var(--text-2); line-height: 1.75; }
   align-items: center;
   justify-content: center;
   padding: var(--s-7) var(--s-4);
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.register-shell::before,
+.register-shell::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  border-radius: 999px;
+  z-index: -1;
+  filter: blur(8px);
+}
+
+.register-shell::before {
+  width: 420px;
+  height: 420px;
+  left: -150px;
+  top: -140px;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.22), transparent 72%);
+  animation: regFloatA 11s ease-in-out infinite;
+}
+
+.register-shell::after {
+  width: 340px;
+  height: 340px;
+  right: -120px;
+  top: -110px;
+  background: radial-gradient(circle, rgba(45, 212, 191, 0.16), transparent 72%);
+  animation: regFloatB 12.5s ease-in-out infinite;
 }
 .register-card {
   background: var(--surface);
@@ -1492,6 +1536,23 @@ p  { color: var(--text-2); line-height: 1.75; }
   border: 1px solid var(--border);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
+}
+
+[data-theme="dark"] .register-card {
+  background: rgba(12, 16, 32, 0.78);
+  border-color: rgba(129, 140, 248, 0.22);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+}
+
+[data-theme="dark"] .register-card .field-label,
+[data-theme="dark"] .register-card .field-hint,
+[data-theme="dark"] .register-card .input-icon,
+[data-theme="dark"] .register-card .reg-school {
+  color: #cfd7f3;
+}
+
+[data-theme="dark"] .register-card svg {
+  color: #e8eeff;
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -1609,6 +1670,14 @@ p  { color: var(--text-2); line-height: 1.75; }
   0%, 100% { opacity: 1; }
   50%       { opacity: 0.45; }
 }
+@keyframes regFloatA {
+  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.86; }
+  50% { transform: translate(14px, 14px) scale(1.06); opacity: 1; }
+}
+@keyframes regFloatB {
+  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.72; }
+  50% { transform: translate(-12px, 10px) scale(1.08); opacity: 1; }
+}
 
 /* Global interaction polish */
 a, button, input, select, textarea, .card, .stat-card, .test-pick-card {
@@ -1647,6 +1716,19 @@ a, button, input, select, textarea, .card, .stat-card, .test-pick-card {
 
 [data-theme="dark"] .theme-switch:hover {
   box-shadow: 0 0 36px rgba(99, 102, 241, 0.28), var(--sh-lg);
+}
+
+/* Student dark-mode readability */
+[data-theme="dark"] .student-page,
+[data-theme="dark"] .test-page,
+[data-theme="dark"] .result-page {
+  color: var(--text);
+}
+
+[data-theme="dark"] .student-page svg,
+[data-theme="dark"] .test-page svg,
+[data-theme="dark"] .result-page svg {
+  color: inherit;
 }
 
 /* Vue transitions */

@@ -171,7 +171,7 @@ const createdStudentId = ref('')
 const pageError        = ref('')
 
 const classOptions = Array.from({ length: 11 }, (_, i) => i + 1)
-  .flatMap(grade => ['A', 'B', 'V'].map(letter => `${grade}-${letter}`))
+  .flatMap(grade => ['A', 'B', 'D'].map(letter => `${grade}-${letter}`))
 
 const onFullNameInput = (e) => {
   const cleaned = String(e.target.value || '')

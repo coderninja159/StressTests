@@ -44,7 +44,10 @@ defineEmits(["click"]);
   border: 2px solid transparent;
   transition:
     opacity 0.15s,
-    background 0.15s;
+    background 0.15s,
+    border-color 0.15s,
+    box-shadow 0.2s,
+    transform 0.2s;
 }
 
 .btn:disabled {
@@ -63,13 +66,28 @@ defineEmits(["click"]);
 }
 
 .btn.secondary {
-  background: #fff;
+  background: color-mix(in srgb, var(--color-surface) 90%, transparent);
   color: var(--color-text);
   border-color: var(--color-border);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
 }
 
 .btn.secondary:hover:not(:disabled) {
-  background: var(--color-bg);
+  background: color-mix(in srgb, var(--color-bg) 88%, transparent);
+  transform: translateY(-1px);
+}
+
+:global([data-theme="dark"]) .btn.secondary {
+  background: rgba(18, 24, 42, 0.86);
+  color: #eef2ff;
+  border-color: rgba(165, 180, 252, 0.34);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+}
+
+:global([data-theme="dark"]) .btn.secondary:hover:not(:disabled) {
+  background: rgba(28, 36, 62, 0.94);
+  border-color: rgba(165, 180, 252, 0.52);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.32), 0 0 0 1px rgba(129, 140, 248, 0.18);
 }
 
 .btn.danger {

@@ -305,6 +305,34 @@ watch(
   max-width: 1320px;
   margin: 0 auto;
   position: relative;
+  isolation: isolate;
+}
+
+.result-page::before,
+.result-page::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  border-radius: 999px;
+  z-index: -1;
+}
+
+.result-page::before {
+  width: 360px;
+  height: 360px;
+  left: -140px;
+  top: -130px;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.18), transparent 72%);
+  animation: cornerDriftA 10.2s ease-in-out infinite;
+}
+
+.result-page::after {
+  width: 300px;
+  height: 300px;
+  right: -120px;
+  top: -110px;
+  background: radial-gradient(circle, rgba(45, 212, 191, 0.13), transparent 72%);
+  animation: cornerDriftB 11.4s ease-in-out infinite;
 }
 
 .result-bg-orb {
@@ -334,6 +362,14 @@ watch(
 
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes floatOrb { 0%,100% { transform: translateY(0); } 50% { transform: translateY(14px); } }
+@keyframes cornerDriftA {
+  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.86; }
+  50% { transform: translate(14px, 12px) scale(1.07); opacity: 1; }
+}
+@keyframes cornerDriftB {
+  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.72; }
+  50% { transform: translate(-12px, 10px) scale(1.08); opacity: 1; }
+}
 
 .card {
   background: var(--surface);
@@ -361,6 +397,10 @@ h1 { margin: 0 0 var(--s-2); font-size: 1.35rem; }
 .risk-normal { background: color-mix(in srgb, #22c55e 25%, white); color: #166534; }
 .risk-medium { background: color-mix(in srgb, #eab308 28%, white); color: #854d0e; }
 .risk-high { background: color-mix(in srgb, #ef4444 22%, white); color: #991b1b; }
+
+[data-theme="dark"] .risk-normal { background: rgba(34, 197, 94, 0.18); color: #86efac; }
+[data-theme="dark"] .risk-medium { background: rgba(234, 179, 8, 0.2); color: #fde68a; }
+[data-theme="dark"] .risk-high { background: rgba(239, 68, 68, 0.2); color: #fca5a5; }
 
 .portrait-lead { font-size: 1.35rem; font-weight: 800; margin: 0 0 var(--s-3); }
 .portrait-desc { margin: 0 0 var(--s-5); line-height: 1.55; color: var(--text); }
