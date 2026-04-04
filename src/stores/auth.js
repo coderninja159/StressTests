@@ -167,11 +167,42 @@ export const useAuthStore = defineStore("auth", () => {
     }
   };
 
-  const registerStudent = async ({ fullName, age, className, schoolId }) => {
+  /** Ism + familiyani users.full_name uchun bir xil formatda yig‘ish (takror tekshiruv mos bo‘lishi uchun) */
+  const buildStudentFullName = (firstName, lastName) =>
+    [firstName, lastName]
+      .map((s) => String(s || "").trim())
+      .filter(Boolean)
+      .join(" ")
+      .replace(/\s+/g, " ")
+      .trim();
+
+  const registerStudent = async ({ firstName, lastName, age, className, schoolId, phone }) => {
     isLoading.value = true;
     clearError();
 
+    const fullName = buildStudentFullName(firstName, lastName);
+    const normalizedPhone = String(phone || "")
+      .replace(/\s/g, "")
+      .trim();
+
     try {
+      const { data: existing, error: checkErr } = await supabase
+        .from("users")
+        .select("id")
+        .eq("full_name", fullName)
+        .eq("phone", normalizedPhone)
+        .eq("role", "student")
+        .maybeSingle();
+
+      if (checkErr) {
+        throw checkErr;
+      }
+
+      if (existing) {
+        errorMessage.value = "Bu o'quvchi allaqachon ro'yxatdan o'tgan!";
+        return null;
+      }
+
       const studentId = await generateStudentId();
 
       const { data, error } = await supabase
@@ -183,25 +214,31 @@ export const useAuthStore = defineStore("auth", () => {
           school_id: schoolId,
           role: "student",
           student_id: studentId,
+          phone: normalizedPhone,
         })
         .select("*")
         .single();
 
-      if (error) throw error;
+      if (error) {
+        if (error.code === "23505") {
+          errorMessage.value = "Bu o'quvchi allaqachon ro'yxatdan o'tgan!";
+          return null;
+        }
+        throw error;
+      }
 
       user.value = data;
-      // Student sessiyasini saqlash
       localStorage.setItem("student_session", JSON.stringify(data));
-
       return studentId;
-    } catch (error) {
-      errorMessage.value = "Ro'yxatdan o'tishda xatolik yuz berdi.";
-      throw error;
+    } catch {
+      if (!errorMessage.value) {
+        errorMessage.value = "Ro'yxatdan o'tishda xatolik yuz berdi.";
+      }
+      return null;
     } finally {
       isLoading.value = false;
     }
   };
-
   const fetchCurrentUser = async () => {
     isLoading.value = true;
     clearError();

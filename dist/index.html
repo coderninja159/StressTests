@@ -5,8 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
     <title>StressTest</title>
-    <script type="module" crossorigin src="/assets/index-D0MdxoIc.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-CuOUB23v.css">
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem("ui-theme");
+          if (t === "dark" || t === "light") {
+            document.documentElement.setAttribute("data-theme", t);
+            document.documentElement.style.colorScheme = t === "dark" ? "dark" : "light";
+          }
+        } catch (e) {}
+      })();
+    </script>
+    <script type="module" crossorigin src="/assets/index-ttGr5vPX.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-TUoGxaVI.css">
   </head>
   <body>
     <div id="app"></div>

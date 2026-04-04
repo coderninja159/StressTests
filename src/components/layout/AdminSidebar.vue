@@ -7,29 +7,80 @@
     <nav class="nav">
       <RouterLink to="/admin/dashboard" class="nav-link" active-class="active" @click="layoutStore.closeSidebar">
         <span class="nav-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.8V21h14V9.8"/></svg>
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="7" height="7" rx="1" />
+            <rect x="14" y="3" width="7" height="7" rx="1" />
+            <rect x="3" y="14" width="7" height="7" rx="1" />
+            <rect x="14" y="14" width="7" height="7" rx="1" />
+          </svg>
         </span>
-        Bosh sahifa
+        Dashboard
       </RouterLink>
       <RouterLink to="/admin/schools" class="nav-link" active-class="active" @click="layoutStore.closeSidebar">
         <span class="nav-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 10 12 5l9 5-9 5-9-5Z"/><path d="M6 12v5c3 2.6 9 2.6 12 0v-5"/></svg>
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z" />
+            <path d="M6 12h12" />
+            <path d="M6 16h12" />
+            <path d="M10 6h4" />
+            <path d="M10 10h4" />
+          </svg>
         </span>
         Maktablar
       </RouterLink>
       <RouterLink to="/admin/psychologists" class="nav-link" active-class="active" @click="layoutStore.closeSidebar">
         <span class="nav-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="3"/><path d="M5 20a7 7 0 0 1 14 0"/><path d="M19 7v6"/><path d="M22 10h-6"/></svg>
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+            <circle cx="9" cy="7" r="4" />
+            <path d="M22 11h-4" />
+            <path d="M20 9v4" />
+          </svg>
         </span>
         Psixologlar
+      </RouterLink>
+      <RouterLink to="/admin/tests" class="nav-link" active-class="active" @click="layoutStore.closeSidebar">
+        <span class="nav-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect width="8" height="4" x="8" y="2" rx="1" ry="1" />
+            <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+            <path d="M12 11h4" />
+            <path d="M12 16h4" />
+            <path d="M8 11h.01" />
+            <path d="M8 16h.01" />
+          </svg>
+        </span>
+        Testlar
+      </RouterLink>
+      <RouterLink to="/admin/dashboard" class="nav-link" @click="layoutStore.closeSidebar">
+        <span class="nav-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 3v18h18" />
+            <path d="M7 16h10" />
+            <path d="M7 11h10" />
+            <path d="M7 6h10" />
+            <path d="M11 16v-5" />
+          </svg>
+        </span>
+        Hisobotlar
       </RouterLink>
     </nav>
 
     <div class="footer">
-      <p class="admin-name">{{ displayName }}</p>
+      <div class="user-block">
+        <div class="avatar" aria-hidden="true">{{ initials }}</div>
+        <div class="user-meta">
+          <span class="user-name">{{ displayName }}</span>
+          <span class="user-role">Administrator</span>
+        </div>
+      </div>
       <button type="button" class="logout" :disabled="authStore.isLoading" @click="onLogout">
         <span class="nav-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+            <polyline points="16 17 21 12 16 7" />
+            <line x1="21" x2="9" y1="12" y2="12" />
+          </svg>
         </span>
         Chiqish
       </button>
@@ -47,6 +98,14 @@ const layoutStore = useLayoutStore();
 
 const displayName = computed(() => authStore.currentUser?.full_name || "Administrator");
 
+const initials = computed(() => {
+  const n = displayName.value.trim();
+  if (!n) return "A";
+  const p = n.split(/\s+/).filter(Boolean);
+  if (p.length >= 2) return (p[0][0] + p[1][0]).toUpperCase();
+  return n.slice(0, 2).toUpperCase();
+});
+
 const onLogout = async () => {
   try {
     await authStore.logout();
@@ -58,20 +117,17 @@ const onLogout = async () => {
 
 <style scoped>
 .dash-sidebar {
-  --dash-sidebar-w: 240px;
+  --dash-sidebar-w: 252px;
   width: var(--dash-sidebar-w);
   flex: 0 0 var(--dash-sidebar-w);
   min-height: 100vh;
-  background: var(--color-surface);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  border-right: 1px solid var(--color-border);
-  padding: var(--space-5) var(--space-4);
+  background: var(--bg-sidebar, var(--bg-sidebar-prof, #0f172a));
+  padding: var(--space-5, 20px) var(--space-4, 16px);
   display: flex;
   flex-direction: column;
   transition: transform 0.3s var(--ease, ease);
   z-index: 100;
-  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.12);
+  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.18);
 }
 
 @media (max-width: 768px) {
@@ -99,94 +155,125 @@ const onLogout = async () => {
 
 .brand {
   font-weight: 800;
-  font-size: 1.15rem;
+  font-size: 1.2rem;
+  color: var(--text-sidebar-active, #fff);
 }
 
 .role {
-  margin: var(--space-1) 0 var(--space-4);
+  margin: var(--space-1, 4px) 0 var(--space-4, 16px);
   font-size: 0.85rem;
-  color: var(--color-muted);
+  color: var(--text-sidebar, rgba(255, 255, 255, 0.6));
 }
 
 .nav {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: 4px;
   flex: 1;
 }
 
 .nav-link {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   padding: 10px 12px;
-  border-radius: var(--radius-sm);
-  color: var(--color-text);
+  border-radius: var(--radius-sm, 8px);
+  color: var(--text-sidebar, rgba(255, 255, 255, 0.6));
   font-weight: 600;
   text-decoration: none;
   border: 1px solid transparent;
+  border-left: 3px solid transparent;
+  transition: background 200ms ease, color 200ms ease, border-color 200ms ease;
 }
+
 .nav-icon {
   display: inline-flex;
+  flex-shrink: 0;
+  color: inherit;
 }
 
 .nav-link:hover {
-  background: var(--color-bg);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.85);
 }
 
 .nav-link.active {
-  background: color-mix(in srgb, var(--color-primary) 16%, transparent);
-  border-color: color-mix(in srgb, var(--color-primary) 45%, transparent);
-  color: var(--color-text);
-}
-
-:global([data-theme="dark"]) .nav-link.active {
-  background: rgba(129, 140, 248, 0.16);
-  border-color: rgba(165, 180, 252, 0.45);
-  color: #eceef8;
+  background: rgba(99, 102, 241, 0.15);
+  color: var(--text-sidebar-active, #fff);
+  border-left-color: var(--color-primary, #6366f1);
 }
 
 .footer {
   margin-top: auto;
-  padding-top: var(--space-4);
-  border-top: 1px solid var(--color-border);
+  padding-top: var(--space-4, 16px);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.admin-name {
-  margin: 0 0 var(--space-2);
+.user-block {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-full, 9999px);
+  background: rgba(99, 102, 241, 0.25);
+  color: var(--text-sidebar-active, #fff);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.user-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.user-name {
   font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--color-muted);
+  font-weight: 700;
+  color: var(--text-sidebar-active, #fff);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.user-role {
+  font-size: 0.75rem;
+  color: var(--text-sidebar, rgba(255, 255, 255, 0.55));
 }
 
 .logout {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 10px;
   width: 100%;
   padding: 10px 12px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--color-border);
-  background: color-mix(in srgb, var(--surface) 88%, transparent);
-  color: var(--color-text);
+  border-radius: var(--radius-sm, 8px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-sidebar, rgba(255, 255, 255, 0.75));
   font-weight: 600;
   cursor: pointer;
-  transition: var(--t, all 0.2s ease);
+  transition: background 200ms ease, border-color 200ms ease, color 200ms ease;
 }
 
-.logout:hover {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-primary) 35%, transparent);
+.logout:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-sidebar-active, #fff);
+  border-color: rgba(255, 255, 255, 0.18);
 }
 
 .logout:disabled {
-  opacity: 0.6;
+  opacity: 0.5;
   cursor: not-allowed;
-}
-
-:global([data-theme="dark"]) .dash-sidebar {
-  background: color-mix(in srgb, var(--sidebar-bg) 94%, transparent);
-  box-shadow: 4px 0 32px rgba(0, 0, 0, 0.35);
 }
 </style>

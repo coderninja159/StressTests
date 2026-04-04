@@ -3,6 +3,8 @@ import { createApp } from "vue";
 import App from "./App.vue";
 import router from "./router";
 import { pinia } from "./stores";
+import { useThemeStore } from "./stores/theme.js";
+import VueApexCharts from "vue3-apexcharts";
 import "./assets/main.css";
 
 /** VAQTINCHALI: bir marta `npm run dev` qilib brauzer konsolida xabarni tekshiring, keyin shu blokni o'chiring. */
@@ -26,6 +28,8 @@ if (import.meta.env.DEV) {
 const app = createApp(App);
 
 app.use(pinia);
+useThemeStore().init();
 app.use(router);
+app.use(VueApexCharts);
 
 app.mount("#app");

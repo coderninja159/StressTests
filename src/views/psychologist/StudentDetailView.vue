@@ -13,9 +13,13 @@
       <template v-else-if="student">
         <div class="head">
           <RouterLink to="/psychologist/students" class="back">← Ro'yxatga</RouterLink>
-          <h1>{{ student.full_name }}</h1>
+          <div class="head-row">
+            <h1>{{ student.full_name }}</h1>
+            <button type="button" class="btn-pdf" @click="downloadPdf">PDF hisobot</button>
+          </div>
         </div>
 
+        <div ref="reportRef" class="report-print">
         <section class="card">
           <h2>Ma'lumotlar</h2>
           <ul class="info">
@@ -65,6 +69,14 @@
         </section>
 
         <p v-else class="muted card flat">Hozircha psixologik test natijasi yo'q.</p>
+
+        <section v-if="psychLineLabels.length" class="card">
+          <h2>Kategoriyalar / stress dinamikasi</h2>
+          <p class="muted small">Psixologik testlar bo'yicha stress foizi (vaqt bo'yicha)</p>
+          <div class="chart-box">
+            <Line :data="psychLineData" :options="psychLineOptions" />
+          </div>
+        </section>
 
         <section class="card">
           <h2>Barcha testlar tarixi</h2>
@@ -124,6 +136,7 @@
             </template>
           </div>
         </section>
+        </div>
       </template>
     </main>
   </div>
@@ -132,6 +145,8 @@
 <script setup>
 import { computed, onMounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
+import { Line } from "vue-chartjs";
+import "../../lib/chartSetup.js";
 
 import PsychologistSidebar from "../../components/layout/PsychologistSidebar.vue";
 import MobileHeader from "../../components/layout/MobileHeader.vue";
@@ -150,8 +165,53 @@ const historyFocus = ref(null);
 
 const aiProLoading = ref(false);
 const aiProText = ref("");
+const reportRef = ref(null);
 
 const psychKeys = ["delinquency", "addiction", "aggression", "self_harm"];
+
+const psychLineLabels = ref([]);
+const psychLineScores = ref([]);
+
+const psychLineData = computed(() => ({
+  labels: psychLineLabels.value,
+  datasets: [
+    {
+      label: "Stress %",
+      data: psychLineScores.value,
+      borderColor: "#4F46E5",
+      backgroundColor: "rgba(79, 70, 229, 0.1)",
+      fill: true,
+      tension: 0.35,
+    },
+  ],
+}));
+
+const psychLineOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: { legend: { display: true } },
+  scales: { y: { beginAtZero: true, suggestedMax: 100 } },
+};
+
+async function downloadPdf() {
+  const el = reportRef.value;
+  if (!el) return;
+  try {
+    const html2pdf = (await import("html2pdf.js")).default;
+    await html2pdf()
+      .set({
+        margin: 12,
+        filename: `oquvchi-${student.value?.student_id || "hisobot"}.pdf`,
+        image: { type: "jpeg", quality: 0.95 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+      })
+      .from(el)
+      .save();
+  } catch {
+    errorMessage.value = "PDF yaratishda xatolik.";
+  }
+}
 
 const schoolId = computed(() => authStore.currentUser?.school_id ?? null);
 
@@ -269,6 +329,8 @@ async function load() {
   allResults.value = [];
   historyFocus.value = null;
   aiProText.value = "";
+  psychLineLabels.value = [];
+  psychLineScores.value = [];
 
   const id = route.params.id;
   if (!id || typeof id !== "string") {
@@ -319,7 +381,20 @@ async function load() {
       throw e2;
     }
 
-    allResults.value = res || [];
+    const list = res || [];
+    allResults.value = list;
+
+    const psych = list
+      .filter((r) => r.test_type === "psychological")
+      .sort((a, b) => new Date(a.taken_at) - new Date(b.taken_at));
+    psychLineLabels.value = psych.map((r) => {
+      try {
+        return new Date(r.taken_at).toLocaleDateString("uz-UZ", { day: "2-digit", month: "short" });
+      } catch {
+        return "";
+      }
+    });
+    psychLineScores.value = psych.map((r) => Number(r.total_score || 0));
   } catch {
     errorMessage.value = "O'quvchi yuklanmadi yoki topilmadi.";
   } finally {
@@ -381,6 +456,44 @@ watch(
 
 .head {
   margin-bottom: var(--space-4);
+}
+
+.head-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.btn-pdf {
+  padding: 10px 16px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--color-text);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-pdf:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.report-print {
+  background: var(--color-bg);
+}
+
+.chart-box {
+  height: 260px;
+  position: relative;
+  margin-top: var(--space-3);
+}
+
+.small {
+  font-size: 0.85rem;
+  margin-top: 0;
 }
 
 .back {
