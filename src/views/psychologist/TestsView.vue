@@ -1,18 +1,18 @@
 <template>
   <div class="tests-layout">
-    <AdminSidebar />
+    <PsychologistSidebar />
     <div class="tests-main">
       <MobileHeader />
       <AppTopbar :show-nav-toggle="true">
         <template #title>
           <div>
             <h1 class="page-title">Testlar va savollar</h1>
-            <p class="tests-sub label-std">Admin: barcha maktablar va umumiy savollar</p>
+            <p class="tests-sub label-std">Faqat o‘z maktabingiz uchun savollar qo‘shiladi</p>
           </div>
         </template>
       </AppTopbar>
       <div class="page-content">
-        <QuestionsManager v-if="supabaseOk" variant="admin" />
+        <QuestionsManager v-if="supabaseOk" variant="psychologist" />
         <p v-else class="tests-warn">Supabase sozlanmagan.</p>
       </div>
     </div>
@@ -20,7 +20,7 @@
 </template>
 
 <script setup>
-import AdminSidebar from "../../components/layout/AdminSidebar.vue";
+import PsychologistSidebar from "../../components/layout/PsychologistSidebar.vue";
 import MobileHeader from "../../components/layout/MobileHeader.vue";
 import AppTopbar from "../../components/layout/AppTopbar.vue";
 import QuestionsManager from "../../components/questions/QuestionsManager.vue";

@@ -15,6 +15,7 @@ export const useThemeStore = defineStore("theme", () => {
     root.style.colorScheme = next === "dark" ? "dark" : "light";
     try {
       localStorage.setItem("ui-theme", next);
+      localStorage.setItem("theme", next);
     } catch {
       /* private mode */
     }
@@ -27,7 +28,8 @@ export const useThemeStore = defineStore("theme", () => {
   /** Pinia yuklangandan keyin, mountdan oldin chaqiring */
   function init() {
     try {
-      const saved = localStorage.getItem("ui-theme");
+      const saved =
+        localStorage.getItem("ui-theme") || localStorage.getItem("theme");
       if (saved === "dark" || saved === "light") {
         apply(saved);
         return;

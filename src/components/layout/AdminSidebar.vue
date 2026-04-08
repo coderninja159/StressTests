@@ -52,6 +52,18 @@
         </span>
         Testlar
       </RouterLink>
+      <RouterLink to="/admin/analytics" class="nav-link" active-class="active" @click="layoutStore.closeSidebar">
+        <span class="nav-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 3v18h18" />
+            <path d="M7 16h10" />
+            <path d="M7 11h10" />
+            <path d="M7 6h10" />
+            <path d="M11 16v-5" />
+          </svg>
+        </span>
+        Tahlil
+      </RouterLink>
       <RouterLink to="/admin/dashboard" class="nav-link" @click="layoutStore.closeSidebar">
         <span class="nav-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

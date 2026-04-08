@@ -183,11 +183,13 @@ const canProceed = computed(() => {
   return Boolean(portraitSelectedId.value);
 });
 
+const studentSchoolId = computed(() => authStore.currentUser?.school_id ?? null);
+
 const pickPsychological = async () => {
   testStore.resetForSelection();
   testStore.startTest("psychological");
   try {
-    await testStore.loadQuestions("psychological");
+    await testStore.loadQuestions("psychological", studentSchoolId.value);
   } catch {
     testStore.resetForSelection();
   }
@@ -197,7 +199,7 @@ const pickPortrait = async () => {
   testStore.resetForSelection();
   testStore.startTest("portrait");
   try {
-    await testStore.loadQuestions("portrait");
+    await testStore.loadQuestions("portrait", studentSchoolId.value);
   } catch {
     testStore.resetForSelection();
   }

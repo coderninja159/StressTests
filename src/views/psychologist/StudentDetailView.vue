@@ -55,6 +55,62 @@
             </div>
           </div>
 
+          <div v-if="latestPsych" class="answers-block">
+            <h3 class="answers-title">Savol va javoblar tahlili</h3>
+            <p class="muted small">
+              {{ formatDate(latestPsych.taken_at) }} — {{ typeLabel("psychological") }}
+            </p>
+            <template v-if="answersForResult(latestPsych.id).length">
+              <div
+                v-if="latestPsych.test_type === 'psychological'"
+                class="accordion-list"
+              >
+                <details
+                  v-for="grp in psychAnswerGroups(latestPsych.id)"
+                  :key="grp.category"
+                  class="acc-item"
+                  open
+                >
+                  <summary class="acc-sum">
+                    <span class="acc-chevron" aria-hidden="true">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="m6 9 6 6 6-6" />
+                      </svg>
+                    </span>
+                    <span>{{ categoryTitle(grp.category) }}</span>
+                    <span class="acc-meta">
+                      {{ grp.score }}/{{ grp.max }} &nbsp; {{ grp.pct }}%
+                    </span>
+                  </summary>
+                  <div class="acc-body">
+                    <div
+                      v-for="(row, idx) in grp.rows"
+                      :key="row.id || idx"
+                      class="qa-row"
+                    >
+                      <p class="qa-q">
+                        {{ idx + 1 }}. “{{ row.question?.question_text || "—" }}”
+                      </p>
+                      <p class="qa-a">
+                        O'quvchi javobi:
+                        <span
+                          class="ans-badge"
+                          :class="psychBadgeClass(row.answer_value)"
+                        >
+                          {{ psychAnswerLabel(row.answer_value) }}
+                        </span>
+                        <span class="qa-pts">({{ row.points ?? 0 }} ball)</span>
+                      </p>
+                    </div>
+                  </div>
+                </details>
+              </div>
+            </template>
+            <p v-else class="muted small">
+              Bu test uchun javoblar jadvalida yozuvlar yo'q (faqat yangi topshirilgan testlar).
+            </p>
+          </div>
+
           <div class="ai-pro">
             <h3>AI professional tahlil</h3>
             <div v-if="aiProLoading" class="ai-loading">
@@ -134,6 +190,80 @@
             <template v-else-if="historyFocus.test_type === 'portrait'">
               <p><strong>Asosiy tur:</strong> {{ portraitName(historyFocus.personality_type) }}</p>
             </template>
+
+            <div class="answers-block focus-answers">
+              <h4 class="answers-title">Savol va javoblar tahlili</h4>
+              <p class="muted small">
+                {{ formatDate(historyFocus.taken_at) }} — {{ typeLabel(historyFocus.test_type) }}
+              </p>
+              <template v-if="answersForResult(historyFocus.id).length">
+                <div
+                  v-if="historyFocus.test_type === 'psychological'"
+                  class="accordion-list"
+                >
+                  <details
+                    v-for="grp in psychAnswerGroups(historyFocus.id)"
+                    :key="grp.category"
+                    class="acc-item"
+                    open
+                  >
+                    <summary class="acc-sum">
+                      <span class="acc-chevron" aria-hidden="true">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <path d="m6 9 6 6 6-6" />
+                        </svg>
+                      </span>
+                      <span>{{ categoryTitle(grp.category) }}</span>
+                      <span class="acc-meta">
+                        {{ grp.score }}/{{ grp.max }} &nbsp; {{ grp.pct }}%
+                      </span>
+                    </summary>
+                    <div class="acc-body">
+                      <div
+                        v-for="(row, idx) in grp.rows"
+                        :key="row.id || idx"
+                        class="qa-row"
+                      >
+                        <p class="qa-q">
+                          {{ idx + 1 }}. “{{ row.question?.question_text || "—" }}”
+                        </p>
+                        <p class="qa-a">
+                          O'quvchi javobi:
+                          <span
+                            class="ans-badge"
+                            :class="psychBadgeClass(row.answer_value)"
+                          >
+                            {{ psychAnswerLabel(row.answer_value) }}
+                          </span>
+                          <span class="qa-pts">({{ row.points ?? 0 }} ball)</span>
+                        </p>
+                      </div>
+                    </div>
+                  </details>
+                </div>
+                <div v-else-if="historyFocus.test_type === 'portrait'" class="portrait-answers">
+                  <div
+                    v-for="(row, idx) in answersForResult(historyFocus.id)"
+                    :key="row.id || idx"
+                    class="qa-row portrait-qa"
+                  >
+                    <p class="qa-q">
+                      {{ idx + 1 }}. “{{ row.question?.question_text || "—" }}”
+                    </p>
+                    <p class="qa-a">
+                      Tanlangan: “{{ row.option?.option_text || "—" }}”
+                    </p>
+                    <p class="qa-dir">
+                      Yo'nalish: {{ portraitName(row.option?.personality_type) }}
+                      <span class="qa-pts">+{{ row.points ?? 0 }} ball</span>
+                    </p>
+                  </div>
+                </div>
+              </template>
+              <p v-else class="muted small">
+                Bu natija uchun javoblar jadvalida yozuvlar yo'q.
+              </p>
+            </div>
           </div>
         </section>
         </div>
@@ -162,6 +292,8 @@ const errorMessage = ref("");
 const student = ref(null);
 const allResults = ref([]);
 const historyFocus = ref(null);
+/** result_id -> enriched test_answers */
+const answersByResultId = ref({});
 
 const aiProLoading = ref(false);
 const aiProText = ref("");
@@ -291,6 +423,98 @@ function toggleHistory(r) {
   historyFocus.value = historyFocus.value?.id === r.id ? null : r;
 }
 
+const PSYCH_CAT_ORDER = ["lie_scale", "delinquency", "addiction", "aggression", "self_harm"];
+
+function answersForResult(resultId) {
+  return answersByResultId.value[resultId] || [];
+}
+
+function categoryTitle(cat) {
+  const map = {
+    lie_scale: "Yolg'on shkalasi",
+    delinquency: "Huquqbuzarlik moyilligi",
+    addiction: "Zavisimlik",
+    aggression: "Tajovuzkorlik",
+    self_harm: "O'z-o'ziga zarar",
+    other: "Boshqa",
+  };
+  return map[cat] || cat || "—";
+}
+
+function psychAnswerLabel(val) {
+  const v = String(val || "").toLowerCase();
+  if (v === "ha") return "HA";
+  if (v === "bazan") return "BA'ZAN";
+  return "YO'Q";
+}
+
+function psychBadgeClass(val) {
+  const v = String(val || "").toLowerCase();
+  if (v === "ha") return "ans-ha";
+  if (v === "bazan") return "ans-bazan";
+  return "ans-yoq";
+}
+
+function psychAnswerGroups(resultId) {
+  const list = answersForResult(resultId).filter(
+    (r) => r.answer_value != null && r.answer_value !== "",
+  );
+  const map = {};
+  for (const row of list) {
+    const cat = row.question?.category || "other";
+    if (!map[cat]) map[cat] = [];
+    map[cat].push(row);
+  }
+  return PSYCH_CAT_ORDER.filter((c) => map[c]?.length).map((category) => {
+    const rows = map[category];
+    const score = rows.reduce((s, r) => s + (Number(r.points) || 0), 0);
+    const max = rows.length * 2;
+    const pct = max > 0 ? Math.round((score / max) * 1000) / 10 : 0;
+    return { category, rows, score, max, pct };
+  });
+}
+
+async function loadAnswersForResults(results) {
+  answersByResultId.value = {};
+  if (!supabase || !results?.length) return;
+  try {
+    const ids = results.map((r) => r.id);
+    const { data: rows, error } = await supabase.from("test_answers").select("*").in("result_id", ids);
+    if (error) throw error;
+    const qids = [...new Set((rows || []).map((r) => r.question_id).filter(Boolean))];
+    const qMap = {};
+    if (qids.length) {
+      const { data: qq, error: eq } = await supabase.from("questions").select("*").in("id", qids);
+      if (eq) throw eq;
+      for (const q of qq || []) qMap[q.id] = q;
+    }
+    const optIds = [...new Set((rows || []).map((r) => r.option_id).filter(Boolean))];
+    const oMap = {};
+    if (optIds.length) {
+      const { data: oo, error: eo } = await supabase.from("answer_options").select("*").in("id", optIds);
+      if (eo) throw eo;
+      for (const o of oo || []) oMap[o.id] = o;
+    }
+    const byResult = {};
+    for (const row of rows || []) {
+      if (!byResult[row.result_id]) byResult[row.result_id] = [];
+      byResult[row.result_id].push({
+        ...row,
+        question: qMap[row.question_id],
+        option: row.option_id ? oMap[row.option_id] : null,
+      });
+    }
+    for (const rid of Object.keys(byResult)) {
+      byResult[rid].sort(
+        (a, b) => (a.question?.order_num ?? 0) - (b.question?.order_num ?? 0),
+      );
+    }
+    answersByResultId.value = byResult;
+  } catch {
+    answersByResultId.value = {};
+  }
+}
+
 async function loadProfessionalAi() {
   const lp = latestPsych.value;
   aiProText.value = "";
@@ -395,6 +619,8 @@ async function load() {
       }
     });
     psychLineScores.value = psych.map((r) => Number(r.total_score || 0));
+
+    await loadAnswersForResults(list);
   } catch {
     errorMessage.value = "O'quvchi yuklanmadi yoki topilmadi.";
   } finally {
@@ -705,5 +931,134 @@ h3 {
 
 @media (max-width: 520px) {
   .table { min-width: 640px; }
+}
+
+.answers-block {
+  margin-top: 1.25rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border-color, var(--border));
+}
+
+.answers-title {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text-primary, var(--color-text));
+  margin: 0 0 0.5rem;
+}
+
+.focus-answers {
+  margin-top: 1rem;
+  border-top: 1px solid var(--border-color, var(--border));
+  padding-top: 1rem;
+}
+
+.accordion-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.acc-item {
+  border: 1px solid var(--border-color, var(--border));
+  border-radius: var(--radius-md, 12px);
+  background: var(--bg-card, var(--surface));
+  overflow: hidden;
+}
+
+.acc-sum {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  font-weight: 600;
+  color: var(--text-primary, var(--color-text));
+}
+
+.acc-sum::-webkit-details-marker {
+  display: none;
+}
+
+.acc-chevron {
+  display: flex;
+  transition: transform 0.2s ease;
+  color: var(--text-muted, var(--color-text));
+}
+
+details[open] .acc-chevron {
+  transform: rotate(180deg);
+}
+
+.acc-meta {
+  margin-left: auto;
+  font-weight: 600;
+  color: var(--text-secondary, var(--color-text));
+  font-size: 0.9rem;
+}
+
+.acc-body {
+  padding: 0 1rem 1rem;
+  border-top: 1px solid var(--border-color, var(--border));
+}
+
+.qa-row {
+  margin-top: 1rem;
+}
+
+.qa-q {
+  margin: 0 0 0.35rem;
+  font-size: 0.95rem;
+  color: var(--text-primary, var(--color-text));
+}
+
+.qa-a,
+.qa-dir {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text-secondary, var(--color-text));
+}
+
+.ans-badge {
+  display: inline-block;
+  padding: 0.2rem 0.5rem;
+  border-radius: var(--radius-sm, 8px);
+  font-weight: 700;
+  font-size: 0.8rem;
+  margin: 0 0.25rem;
+}
+
+.ans-ha {
+  background: var(--color-rose-muted, rgba(244, 63, 94, 0.12));
+  color: var(--color-rose, #f43f5e);
+}
+
+.ans-bazan {
+  background: var(--color-amber-muted, rgba(245, 158, 11, 0.12));
+  color: var(--color-amber, #f59e0b);
+}
+
+.ans-yoq {
+  background: var(--color-emerald-muted, rgba(16, 185, 129, 0.12));
+  color: var(--color-emerald, #10b981);
+}
+
+.qa-pts {
+  font-weight: 600;
+  margin-left: 0.25rem;
+}
+
+.portrait-answers {
+  margin-top: 0.75rem;
+}
+
+.portrait-qa {
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border-color, var(--border));
+}
+
+.portrait-qa:last-child {
+  border-bottom: none;
 }
 </style>

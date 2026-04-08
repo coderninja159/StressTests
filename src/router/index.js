@@ -14,6 +14,8 @@ import AdminDashboardView from "../views/admin/DashboardView.vue";
 import SchoolsView from "../views/admin/SchoolsView.vue";
 import PsychologistsView from "../views/admin/PsychologistsView.vue";
 import TestsView from "../views/admin/TestsView.vue";
+import PsychologistTestsView from "../views/psychologist/TestsView.vue";
+import AnalyticsView from "../views/admin/AnalyticsView.vue";
 import NotFoundView from "../views/NotFoundView.vue";
 
 const routes = [
@@ -56,6 +58,12 @@ const routes = [
     component: StudentDetailView,
     meta: { requiresAuth: true, role: "psychologist" },
   },
+  {
+    path: "/psychologist/tests",
+    name: "psychologist-tests",
+    component: PsychologistTestsView,
+    meta: { requiresAuth: true, role: "psychologist" },
+  },
   { path: "/admin", redirect: "/admin/dashboard" },
   {
     path: "/admin/dashboard",
@@ -79,6 +87,12 @@ const routes = [
     path: "/admin/tests",
     name: "admin-tests",
     component: TestsView,
+    meta: { requiresAuth: true, role: "admin" },
+  },
+  {
+    path: "/admin/analytics",
+    name: "admin-analytics",
+    component: AnalyticsView,
     meta: { requiresAuth: true, role: "admin" },
   },
   { path: "/:pathMatch(.*)*", name: "not-found", component: NotFoundView },

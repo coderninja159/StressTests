@@ -1,5 +1,11 @@
 <template>
-  <div class="auth-shell">
+  <div class="auth-page">
+    <AppTopbar :show-nav-toggle="false">
+      <template #title>
+        <span class="page-title" style="font-size: 1.1rem">StressTest</span>
+      </template>
+    </AppTopbar>
+    <div class="auth-shell">
 
     <!-- ═══════════ CHAP PANEL ═══════════ -->
     <div class="auth-panel">
@@ -208,12 +214,14 @@
       </div>
     </div>
   </div>
+  </div>
 </template>
 
 <script setup>
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../../stores/auth'
+import AppTopbar from '../../components/layout/AppTopbar.vue'
 
 const router    = useRouter()
 const authStore = useAuthStore()
@@ -283,6 +291,15 @@ const handleStudentId = async () => {
 </script>
 
 <style scoped>
+.auth-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-page, var(--color-bg));
+}
+.auth-shell {
+  flex: 1;
+}
 .login-form { display: flex; flex-direction: column; gap: var(--s-5); }
 .mb-4 { margin-bottom: var(--s-4); }
 </style>

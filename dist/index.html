@@ -8,7 +8,7 @@
     <script>
       (function () {
         try {
-          var t = localStorage.getItem("ui-theme");
+          var t = localStorage.getItem("ui-theme") || localStorage.getItem("theme");
           if (t === "dark" || t === "light") {
             document.documentElement.setAttribute("data-theme", t);
             document.documentElement.style.colorScheme = t === "dark" ? "dark" : "light";
@@ -16,8 +16,8 @@
         } catch (e) {}
       })();
     </script>
-    <script type="module" crossorigin src="/assets/index-ttGr5vPX.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-TUoGxaVI.css">
+    <script type="module" crossorigin src="/assets/index-1_Pt9ft0.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-B1DtLTfW.css">
   </head>
   <body>
     <div id="app"></div>

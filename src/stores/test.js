@@ -69,7 +69,7 @@ export const useTestStore = defineStore("test", () => {
     clearError();
   };
 
-  const loadQuestions = async (testType) => {
+  const loadQuestions = async (testType, studentSchoolId = null) => {
     if (!supabase) {
       errorMessage.value = missingSupabaseMessage;
       return;
@@ -79,12 +79,19 @@ export const useTestStore = defineStore("test", () => {
     clearError();
 
     try {
-      const { data: qs, error } = await supabase
+      let q = supabase
         .from("questions")
         .select("*")
         .eq("test_type", testType)
-        .eq("is_active", true)
-        .order("order_num", { ascending: true });
+        .eq("is_active", true);
+
+      if (studentSchoolId) {
+        q = q.or(`school_id.is.null,school_id.eq.${studentSchoolId}`);
+      } else {
+        q = q.is("school_id", null);
+      }
+
+      const { data: qs, error } = await q.order("order_num", { ascending: true });
 
       if (error) throw error;
 
@@ -376,6 +383,24 @@ export const useTestStore = defineStore("test", () => {
           .single();
 
         if (error) throw error;
+
+        const answerRows = [];
+        for (const q of questions.value) {
+          const raw = answers.value[q.id];
+          const points = PSYCH_ANSWER_SCORE[raw] ?? 0;
+          answerRows.push({
+            result_id: data.id,
+            question_id: q.id,
+            answer_value: raw,
+            option_id: null,
+            points,
+          });
+        }
+        if (answerRows.length) {
+          const { error: ansErr } = await supabase.from("test_answers").insert(answerRows);
+          if (ansErr) console.error("test_answers insert:", ansErr);
+        }
+
         await router.push({ path: "/student/result", query: { id: data.id } });
         resetForSelection();
         return data.id;
@@ -398,6 +423,24 @@ export const useTestStore = defineStore("test", () => {
         .single();
 
       if (error) throw error;
+
+      const portraitRows = [];
+      for (const q of questions.value) {
+        const ans = answers.value[q.id];
+        if (!ans?.optionId) continue;
+        portraitRows.push({
+          result_id: data.id,
+          question_id: q.id,
+          answer_value: null,
+          option_id: ans.optionId,
+          points: ans.points ?? 0,
+        });
+      }
+      if (portraitRows.length) {
+        const { error: pe } = await supabase.from("test_answers").insert(portraitRows);
+        if (pe) console.error("test_answers portrait:", pe);
+      }
+
       await router.push({ path: "/student/result", query: { id: data.id } });
       resetForSelection();
       return data.id;

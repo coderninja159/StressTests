@@ -1,5 +1,11 @@
 <template>
-  <div class="register-shell">
+  <div class="auth-page">
+    <AppTopbar :show-nav-toggle="false">
+      <template #title>
+        <span class="page-title" style="font-size: 1.1rem">StressTest</span>
+      </template>
+    </AppTopbar>
+    <div class="register-shell">
     <div class="register-card">
       <div class="reg-header">
         <div class="reg-icon">
@@ -188,12 +194,14 @@
       </div>
     </div>
   </div>
+  </div>
 </template>
 
 <script setup>
 import { computed, reactive, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useAuthStore } from "../../stores/auth";
+import AppTopbar from "../../components/layout/AppTopbar.vue";
 
 const route = useRoute();
 const router = useRouter();
