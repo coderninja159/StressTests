@@ -79,9 +79,11 @@ import BaseCard from "../../components/ui/BaseCard.vue";
 import LoadingSpinner from "../../components/ui/LoadingSpinner.vue";
 import { supabase } from "../../lib/supabase";
 import { useAuthStore } from "../../stores/auth";
+import { useTestStore } from "../../stores/test";
 
 const router = useRouter();
 const authStore = useAuthStore();
+const testStore = useTestStore();
 
 const supabaseOk = Boolean(supabase);
 const loading = ref(true);
@@ -175,6 +177,7 @@ function openResult() {
 }
 
 function goTest() {
+  testStore.resetForSelection();
   router.push("/student/test");
 }
 

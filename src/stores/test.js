@@ -27,6 +27,48 @@ function pickRandom(arr, n) {
   return shuffled.slice(0, Math.min(n, shuffled.length));
 }
 
+function isSchoolIdSchemaError(error) {
+  const t = `${error?.message || ""} ${error?.details || ""} ${error?.hint || ""}`.toLowerCase();
+  return t.includes("school_id") && (t.includes("does not exist") || t.includes("schema cache"));
+}
+
+/**
+ * Savollar: avvalo maktab filtri; xato yoki bo‘sh bo‘lsa — barcha faol savollar (RLS cheklovi).
+ */
+async function fetchQuestionsForTest(testType, studentSchoolId) {
+  if (!supabase) {
+    return { data: [], error: new Error("Supabase yo‘q") };
+  }
+
+  const baseSelect = () =>
+    supabase.from("questions").select("*").eq("test_type", testType).eq("is_active", true);
+
+  let q = baseSelect().order("order_num", { ascending: true });
+
+  if (studentSchoolId) {
+    q = q.or(`school_id.is.null,school_id.eq.${studentSchoolId}`);
+  } else {
+    q = q.is("school_id", null);
+  }
+
+  let { data: qs, error } = await q;
+
+  if (error && isSchoolIdSchemaError(error)) {
+    const r = await baseSelect().order("order_num", { ascending: true });
+    qs = r.data;
+    error = r.error;
+  }
+
+  if (!error && (!qs || !qs.length)) {
+    const r2 = await baseSelect().order("order_num", { ascending: true });
+    if (!r2.error && r2.data?.length) {
+      qs = r2.data;
+    }
+  }
+
+  return { data: qs || [], error };
+}
+
 export const useTestStore = defineStore("test", () => {
   const currentTest = ref(null);
   const questions = ref([]);
@@ -79,19 +121,7 @@ export const useTestStore = defineStore("test", () => {
     clearError();
 
     try {
-      let q = supabase
-        .from("questions")
-        .select("*")
-        .eq("test_type", testType)
-        .eq("is_active", true);
-
-      if (studentSchoolId) {
-        q = q.or(`school_id.is.null,school_id.eq.${studentSchoolId}`);
-      } else {
-        q = q.is("school_id", null);
-      }
-
-      const { data: qs, error } = await q.order("order_num", { ascending: true });
+      const { data: qs, error } = await fetchQuestionsForTest(testType, studentSchoolId);
 
       if (error) throw error;
 
@@ -120,10 +150,17 @@ export const useTestStore = defineStore("test", () => {
         // Aralashtiramiz — foydalanuvchi kategoriyani sezmasin
         selectedQuestions = selectedQuestions.sort(() => Math.random() - 0.5);
 
+        if (!selectedQuestions.length) {
+          throw new Error(
+            "Psixologik savollar bazada yetarli emas (kategoriyalar bo‘yicha). Administratorga murojaat qiling.",
+          );
+        }
       } else if (testType === "portrait") {
         // 25 ta savoldan 15 ta random
         selectedQuestions = pickRandom(qs, 15);
-
+        if (!selectedQuestions.length) {
+          throw new Error("Portret savollari topilmadi.");
+        }
       } else {
         selectedQuestions = qs;
       }
@@ -155,7 +192,10 @@ export const useTestStore = defineStore("test", () => {
 
       currentQuestionIndex.value = 0;
     } catch (error) {
-      errorMessage.value = "Savollarni yuklashda xatolik yuz berdi.";
+      const hint = error?.message || error?.details || "";
+      errorMessage.value = hint
+        ? `Savollarni yuklashda xatolik: ${hint}`
+        : "Savollarni yuklashda xatolik yuz berdi.";
       questions.value = [];
       answerOptionsByQuestionId.value = {};
       throw error;

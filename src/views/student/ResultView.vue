@@ -119,10 +119,12 @@ import { useRoute, useRouter } from "vue-router";
 import { getStudentExplanation } from "../../lib/ai";
 import { supabase } from "../../lib/supabase";
 import { useAuthStore } from "../../stores/auth";
+import { useTestStore } from "../../stores/test";
 
 const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
+const testStore = useTestStore();
 
 const loading = ref(true);
 const errorMessage = ref("");
@@ -279,6 +281,7 @@ const loadResult = async () => {
 };
 
 const goTest = () => {
+  testStore.resetForSelection();
   router.push("/student/test");
 };
 

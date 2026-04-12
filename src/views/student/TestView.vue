@@ -43,6 +43,14 @@
       <p>Savollar yuklanmoqda...</p>
     </div>
 
+    <div
+      v-else-if="testStore.currentTest && !testStore.currentQuestion && !testStore.isLoading"
+      class="loading-wrap broken"
+    >
+      <p>Test holati buzilgan yoki savollar yuklanmadi.</p>
+      <button type="button" class="link-btn" @click="cancelTest">Test tanloviga qaytish</button>
+    </div>
+
     <div v-else-if="testStore.currentTest && testStore.currentQuestion" class="session">
       <div class="top-bar card-shell">
         <button type="button" class="link-btn" :disabled="testStore.isLoading" @click="cancelTest">
@@ -135,7 +143,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted } from "vue";
+import { computed } from "vue";
 import { storeToRefs } from "pinia";
 
 import { useAuthStore } from "../../stores/auth";
@@ -225,10 +233,6 @@ const onPrimary = async () => {
     // xabar store da
   }
 };
-
-onMounted(() => {
-  testStore.resetForSelection();
-});
 </script>
 
 <style scoped>
