@@ -116,8 +116,8 @@
 import { computed, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
-import { getStudentExplanation } from "../../lib/ai";
-import { supabase } from "../../lib/supabase";
+import { getStudentExplanationByResultId } from "../../lib/ai";
+import { api, getApiErrorMessage } from "../../lib/api";
 import { useAuthStore } from "../../stores/auth";
 import { useTestStore } from "../../stores/test";
 
@@ -223,11 +223,7 @@ async function fetchStudentAi(r) {
 
   aiLoading.value = true;
   try {
-    const testType = r.test_type === "psychological" ? "psychological" : "portrait";
-    const contextLabel =
-      testType === "psychological" ? riskLabel(r.risk_level) : portraitTypePlain.value;
-
-    const text = await getStudentExplanation(r.category_scores, contextLabel, testType);
+    const text = await getStudentExplanationByResultId(r.id);
     aiParagraphs.value = text ? splitAiParagraphs(text) : [];
   } finally {
     aiLoading.value = false;
@@ -245,22 +241,12 @@ const loadResult = async () => {
     return;
   }
 
-  if (!supabase) {
-    loading.value = false;
-    errorMessage.value = "Supabase sozlanmagan.";
-    return;
-  }
-
   loading.value = true;
 
   try {
-    const { data, error } = await supabase.from("results").select("*").eq("id", id).single();
-
-    if (error) {
-      throw error;
-    }
-
-    if (!data) {
+    const { data: resp } = await api.get(`/api/students/me/results/${encodeURIComponent(id)}`);
+    const data = resp?.result;
+    if (!resp?.success || !data) {
       throw new Error("empty");
     }
 
@@ -273,8 +259,8 @@ const loadResult = async () => {
 
     result.value = data;
     await fetchStudentAi(data);
-  } catch {
-    errorMessage.value = "Natija yuklanmadi yoki topilmadi.";
+  } catch (error) {
+    errorMessage.value = getApiErrorMessage(error, "Natija yuklanmadi yoki topilmadi.");
   } finally {
     loading.value = false;
   }

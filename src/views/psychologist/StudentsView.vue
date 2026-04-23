@@ -293,7 +293,7 @@ import {
 
 import PsychologistSidebar from "../../components/layout/PsychologistSidebar.vue";
 import MobileHeader from "../../components/layout/MobileHeader.vue";
-import { supabase } from "../../lib/supabase";
+import { api, getApiErrorMessage } from "../../lib/api";
 import { useAuthStore } from "../../stores/auth";
 import {
   DIRECTION_KEYS,
@@ -443,10 +443,18 @@ function riskBadgeClass(row) {
   return "risk-badge--none";
 }
 
-function exportExcel() {
+async function exportExcel() {
   exporting.value = true;
   try {
+    // backend export endpoint mavjud bo'lsa, shu faylni yuklab olamiz
     const d = new Date().toISOString().slice(0, 10);
+    try {
+      const resp = await api.get("/api/psychologist/export", { responseType: "blob" });
+      saveAs(new Blob([resp.data]), `oquvchilar_${d}.xlsx`);
+      return;
+    } catch {
+      // fallback
+    }
     const wb = XLSX.utils.book_new();
     const sheetData = filteredRows.value.map((r) => ({
       "Ism Familiya": r.full_name,
@@ -481,29 +489,15 @@ async function load() {
   loading.value = true;
   students.value = [];
   results.value = [];
-  if (!supabase || !schoolId.value) {
-    loading.value = false;
-    return;
-  }
   try {
-    const { data: studs, error: e1 } = await supabase
-      .from("users")
-      .select("id, full_name, class_name, age, phone")
-      .eq("role", "student")
-      .eq("school_id", schoolId.value)
-      .order("full_name");
-    if (e1) throw e1;
-    students.value = studs || [];
-    const ids = students.value.map((s) => s.id);
-    if (!ids.length) return;
-    const { data: res, error: e2 } = await supabase
-      .from("results")
-      .select("id, user_id, test_type, risk_level, personality_type, taken_at")
-      .in("user_id", ids)
-      .order("taken_at", { ascending: false });
-    if (e2) throw e2;
-    results.value = res || [];
-  } catch {
+    const [{ data: studentsResp }, { data: statsResp }] = await Promise.all([
+      api.get("/api/psychologist/students"),
+      api.get("/api/psychologist/stats"),
+    ]);
+    students.value = studentsResp?.students || [];
+    results.value = statsResp?.results || [];
+  } catch (error) {
+    console.error(getApiErrorMessage(error, "Psixolog ma'lumotlarini yuklashda xatolik."));
     students.value = [];
     results.value = [];
   } finally {
@@ -512,21 +506,7 @@ async function load() {
 }
 
 async function removeStudent(row) {
-  if (!supabase) return;
-  const ok = confirm(`"${row.full_name}" o'quvchisini va uning test tarixini o'chirishni tasdiqlaysizmi?`);
-  if (!ok) return;
-  deleteLoadingId.value = row.id;
-  try {
-    const { error: rErr } = await supabase.from("results").delete().eq("user_id", row.id);
-    if (rErr) throw rErr;
-    const { error: uErr } = await supabase.from("users").delete().eq("id", row.id).eq("role", "student");
-    if (uErr) throw uErr;
-    await load();
-  } catch {
-    alert("O'quvchini o'chirishda xatolik yuz berdi.");
-  } finally {
-    deleteLoadingId.value = null;
-  }
+  alert(`"${row.full_name}" uchun o'chirish backend endpointi hozircha belgilanmagan.`);
 }
 
 onMounted(() => {

@@ -173,9 +173,9 @@ import "../../lib/chartSetup.js";
 import AdminSidebar from "../../components/layout/AdminSidebar.vue";
 import MobileHeader from "../../components/layout/MobileHeader.vue";
 import AppTopbar from "../../components/layout/AppTopbar.vue";
-import { supabase } from "../../lib/supabase";
+import { api, getApiErrorMessage } from "../../lib/api";
 
-const supabaseOk = Boolean(supabase);
+const supabaseOk = true;
 const loading = ref(true);
 const loadError = ref("");
 const exporting = ref(false);
@@ -234,43 +234,33 @@ function rangeStart() {
 }
 
 async function loadAll() {
-  if (!supabase) {
-    loading.value = false;
-    return;
-  }
   loading.value = true;
   loadError.value = "";
   try {
-    const { data: sch, error: e1 } = await supabase.from("schools").select("id, name");
-    if (e1) throw e1;
-    schools.value = sch || [];
-
-    const { data: st, error: e2 } = await supabase.from("users").select("id, school_id, class_name, role").eq("role", "student");
-    if (e2) throw e2;
-    students.value = st || [];
-
-    const { data: res, error: e3 } = await supabase
-      .from("results")
-      .select("id, user_id, test_type, risk_level, taken_at, category_scores");
-    if (e3) throw e3;
-    let rlist = res || [];
+    const [{ data: sch }, { data: st }, { data: statsResp }, { data: px }] = await Promise.all([
+      api.get("/api/admin/schools"),
+      api.get("/api/admin/students"),
+      api.get("/api/admin/stats"),
+      api.get("/api/admin/psychologists"),
+    ]);
+    schools.value = sch?.schools || [];
+    students.value = (st?.students || []).map((u) => ({
+      ...u,
+      school_id: u.school_id || u.schoolId,
+    }));
+    let rlist = statsResp?.results || [];
     const t0 = rangeStart();
     if (rangePreset.value !== "all") {
       rlist = rlist.filter((r) => new Date(r.taken_at) >= t0);
     }
     results.value = rlist;
-
-    const { data: px, error: e4 } = await supabase
-      .from("users")
-      .select("id, full_name, school_id, role, created_at")
-      .eq("role", "psychologist");
-    if (e4) throw e4;
-    psychs.value = px || [];
+    psychs.value = (px?.psychologists || []).map((p) => ({
+      ...p,
+      school_id: p.school_id || p.schoolId,
+      full_name: p.full_name || p.fullName,
+    }));
   } catch (e) {
-    const msg = e?.message || e?.details || "";
-    loadError.value = msg
-      ? `Ma’lumot yuklanmadi: ${msg}`
-      : "Ma’lumot yuklanmadi.";
+    loadError.value = getApiErrorMessage(e, "Ma’lumot yuklanmadi.");
   } finally {
     loading.value = false;
   }

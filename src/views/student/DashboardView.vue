@@ -11,8 +11,7 @@
       </div>
     </section>
 
-    <div v-if="!supabaseOk" class="alert">Supabase sozlanmagan.</div>
-    <LoadingSpinner v-else-if="loading" text="Ma'lumotlar yuklanmoqda..." />
+    <LoadingSpinner v-if="loading" text="Ma'lumotlar yuklanmoqda..." />
 
     <template v-else>
       <p v-if="loadError" class="alert">{{ loadError }}</p>
@@ -77,7 +76,7 @@ import { useRouter } from "vue-router";
 import BaseButton from "../../components/ui/BaseButton.vue";
 import BaseCard from "../../components/ui/BaseCard.vue";
 import LoadingSpinner from "../../components/ui/LoadingSpinner.vue";
-import { supabase } from "../../lib/supabase";
+import { api, getApiErrorMessage } from "../../lib/api";
 import { useAuthStore } from "../../stores/auth";
 import { useTestStore } from "../../stores/test";
 
@@ -85,7 +84,6 @@ const router = useRouter();
 const authStore = useAuthStore();
 const testStore = useTestStore();
 
-const supabaseOk = Boolean(supabase);
 const loading = ref(true);
 const loadError = ref("");
 const latestResult = ref(null);
@@ -145,27 +143,13 @@ async function loadLatest() {
   loadError.value = "";
   latestResult.value = null;
 
-  const uid = authStore.currentUser?.id;
-  if (!supabase || !uid) {
-    return;
-  }
-
   try {
-    const { data, error } = await supabase
-      .from("results")
-      .select("*")
-      .eq("user_id", uid)
-      .order("taken_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (error) {
-      throw error;
-    }
-
-    latestResult.value = data || null;
-  } catch {
-    loadError.value = "Oxirgi natijani yuklab bo'lmadi.";
+    const { data } = await api.get("/api/students/me/results", {
+      params: { limit: 1, offset: 0 },
+    });
+    latestResult.value = data?.success ? data.results?.[0] || null : null;
+  } catch (error) {
+    loadError.value = getApiErrorMessage(error, "Oxirgi natijani yuklab bo'lmadi.");
   }
 }
 

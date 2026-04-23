@@ -8,8 +8,7 @@
         <BaseButton variant="primary" @click="openCreate">Yangi maktab qo'shish</BaseButton>
       </div>
 
-      <p v-if="!supabaseOk" class="alert">Supabase sozlanmagan.</p>
-      <LoadingSpinner v-else-if="loading" text="Yuklanmoqda..." />
+      <LoadingSpinner v-if="loading" text="Yuklanmoqda..." />
       <p v-else-if="pageError" class="alert">{{ pageError }}</p>
 
       <template v-else>
@@ -91,9 +90,8 @@ import MobileHeader from "../../components/layout/MobileHeader.vue";
 import BaseButton from "../../components/ui/BaseButton.vue";
 import BaseInput from "../../components/ui/BaseInput.vue";
 import LoadingSpinner from "../../components/ui/LoadingSpinner.vue";
-import { supabase } from "../../lib/supabase";
+import { api, getApiErrorMessage } from "../../lib/api";
 
-const supabaseOk = Boolean(supabase);
 const loading = ref(true);
 const pageError = ref("");
 const schools = ref([]);
@@ -180,14 +178,12 @@ function randomCode() {
 }
 
 async function generateCode() {
-  if (!supabase) {
-    return;
-  }
   formError.value = "";
   for (let i = 0; i < 30; i += 1) {
     const c = randomCode();
-    const { data } = await supabase.from("schools").select("id").eq("code", c).maybeSingle();
-    if (!data) {
+    const { data } = await api.get("/api/admin/schools", { params: { code: c } });
+    const exists = (data?.schools || []).some((s) => s.code === c);
+    if (!exists) {
       form.code = c;
       return;
     }
@@ -225,35 +221,29 @@ async function load() {
   schools.value = [];
   users.value = [];
 
-  if (!supabase) {
-    loading.value = false;
-    return;
-  }
-
   try {
-    const { data: s, error: e1 } = await supabase
-      .from("schools")
-      .select("*")
-      .order("created_at", { ascending: false });
-
-    if (e1) {
-      throw e1;
-    }
-
-    schools.value = s || [];
-
-    const { data: u, error: e2 } = await supabase
-      .from("users")
-      .select("id, school_id, role, full_name")
-      .in("role", ["student", "psychologist"]);
-
-    if (e2) {
-      throw e2;
-    }
-
-    users.value = u || [];
-  } catch {
-    pageError.value = "Ma'lumotlarni yuklashda xatolik.";
+    const [schoolsResp, psychResp, studentsResp] = await Promise.all([
+      api.get("/api/admin/schools"),
+      api.get("/api/admin/psychologists"),
+      api.get("/api/admin/students"),
+    ]);
+    schools.value = schoolsResp.data?.schools || [];
+    users.value = [
+      ...(psychResp.data?.psychologists || []).map((p) => ({
+        id: p.id,
+        school_id: p.school_id || p.schoolId,
+        role: "psychologist",
+        full_name: p.full_name || p.fullName,
+      })),
+      ...(studentsResp.data?.students || []).map((s) => ({
+        id: s.id,
+        school_id: s.school_id || s.schoolId,
+        role: "student",
+        full_name: s.full_name || s.fullName,
+      })),
+    ];
+  } catch (error) {
+    pageError.value = getApiErrorMessage(error, "Ma'lumotlarni yuklashda xatolik.");
   } finally {
     loading.value = false;
   }
@@ -261,74 +251,41 @@ async function load() {
 
 async function saveSchool() {
   formError.value = "";
-  if (!validateForm() || !supabase) {
+  if (!validateForm()) {
     return;
   }
 
   saveLoading.value = true;
   try {
     if (editingId.value) {
-      const { data: dup } = await supabase
-        .from("schools")
-        .select("id")
-        .eq("code", form.code)
-        .neq("id", editingId.value)
-        .maybeSingle();
-
-      if (dup) {
-        formError.value = "Bu kod boshqa maktabda band.";
-        return;
-      }
-
-      const { error } = await supabase
-        .from("schools")
-        .update({ name: form.name.trim(), code: form.code })
-        .eq("id", editingId.value);
-
-      if (error) {
-        throw error;
-      }
+      await api.patch(`/api/admin/schools/${encodeURIComponent(editingId.value)}`, {
+        name: form.name.trim(),
+        code: form.code,
+      });
     } else {
-      const { data: dup } = await supabase.from("schools").select("id").eq("code", form.code).maybeSingle();
-
-      if (dup) {
-        formError.value = "Bu kod allaqachon mavjud.";
-        return;
-      }
-
-      const { error } = await supabase.from("schools").insert({
+      await api.post("/api/admin/schools", {
         name: form.name.trim(),
         code: form.code,
         is_active: true,
       });
-
-      if (error) {
-        throw error;
-      }
     }
 
     closeModal();
     await load();
-  } catch {
-    formError.value = "Saqlashda xatolik yuz berdi.";
+  } catch (error) {
+    formError.value = getApiErrorMessage(error, "Saqlashda xatolik yuz berdi.");
   } finally {
     saveLoading.value = false;
   }
 }
 
 async function toggleActive(row, next) {
-  if (!supabase) {
-    return;
-  }
   toggleLoadingId.value = row.id;
   try {
-    const { error } = await supabase.from("schools").update({ is_active: next }).eq("id", row.id);
-    if (error) {
-      throw error;
-    }
+    await api.patch(`/api/admin/schools/${encodeURIComponent(row.id)}`, { is_active: next });
     row.is_active = next;
-  } catch {
-    pageError.value = "Holatni yangilab bo'lmadi.";
+  } catch (error) {
+    pageError.value = getApiErrorMessage(error, "Holatni yangilab bo'lmadi.");
   } finally {
     toggleLoadingId.value = null;
   }
@@ -336,10 +293,6 @@ async function toggleActive(row, next) {
 
 async function tryDelete(row) {
   formError.value = "";
-  if (!supabase) {
-    return;
-  }
-
   const rel = users.value.filter((u) => u.school_id === row.id);
   const hasStudent = rel.some((u) => u.role === "student");
   const hasPsy = rel.some((u) => u.role === "psychologist");
@@ -354,10 +307,7 @@ async function tryDelete(row) {
   }
 
   try {
-    const { error } = await supabase.from("schools").delete().eq("id", row.id);
-    if (error) {
-      throw error;
-    }
+    await api.patch(`/api/admin/schools/${encodeURIComponent(row.id)}`, { is_active: false });
     await load();
   } catch {
     alert("O'chirishda xatolik yuz berdi.");

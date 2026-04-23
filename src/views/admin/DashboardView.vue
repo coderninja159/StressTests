@@ -285,14 +285,9 @@ import MobileHeader from "../../components/layout/MobileHeader.vue";
 import StatCard from "../../components/ui/StatCard.vue";
 import ChartCard from "../../components/ui/ChartCard.vue";
 import DataTable from "../../components/ui/DataTable.vue";
-import { supabase } from "../../lib/supabase";
-import {
-  buildResultsByUser,
-  buildSchoolStatsRow,
-  fetchAllResultsRows,
-} from "../../lib/legacyDashboardMetrics.js";
+import { api, getApiErrorMessage } from "../../lib/api";
 
-const supabaseOk = Boolean(supabase);
+const supabaseOk = true;
 const loading = ref(true);
 const chartsLoading = ref(true);
 const errorMessage = ref("");
@@ -601,52 +596,28 @@ const schoolsSortedForExport = computed(() =>
 );
 
 async function load() {
-  if (!supabase) {
-    loading.value = false;
-    chartsLoading.value = false;
-    return;
-  }
   loading.value = true;
   chartsLoading.value = true;
   errorMessage.value = "";
   try {
-    const [{ count: cSch }, { count: cPsy }, { count: cStu }] = await Promise.all([
-      supabase.from("schools").select("*", { count: "exact", head: true }),
-      supabase.from("users").select("*", { count: "exact", head: true }).eq("role", "psychologist"),
-      supabase.from("users").select("*", { count: "exact", head: true }).eq("role", "student"),
+    const [{ data: statsResp }, { data: schoolsResp }, { data: psychResp }, { data: studentsResp }] = await Promise.all([
+      api.get("/api/admin/stats"),
+      api.get("/api/admin/schools"),
+      api.get("/api/admin/psychologists"),
+      api.get("/api/admin/students"),
     ]);
 
-    const { count: schUntilPrev } = await supabase
-      .from("schools")
-      .select("id", { count: "exact", head: true })
-      .lte("created_at", lastDayOfPreviousMonthIso());
-
-    schoolsPrevMonth.value = schUntilPrev ?? 0;
-
-    const t0 = startOfTodayIso();
-    const t1 = endOfTodayIso();
-    const { count: cToday } = await supabase
-      .from("results")
-      .select("*", { count: "exact", head: true })
-      .gte("taken_at", t0)
-      .lte("taken_at", t1);
-
-    const { data: schoolsData } = await supabase.from("schools").select("id, name, code, is_active, created_at").order("name");
-    const { data: studentsData } = await supabase
-      .from("users")
-      .select("id, school_id, role")
-      .eq("role", "student");
-    const { data: psychData } = await supabase.from("users").select("school_id").eq("role", "psychologist");
-
-    const schools = schoolsData || [];
-    const students = studentsData || [];
-    const psychBySchool = new Set((psychData || []).map((p) => p.school_id).filter(Boolean));
-
-    const results = await fetchAllResultsRows(supabase);
+    const statsData = statsResp?.stats || statsResp || {};
+    const schools = schoolsResp?.schools || [];
+    const students = studentsResp?.students || [];
+    const psychologists = psychResp?.psychologists || [];
+    const psychBySchool = new Set(
+      psychologists.map((p) => p.school_id || p.schoolId).filter(Boolean),
+    );
+    const results = statsResp?.results || [];
     allResults.value = results;
-    const byUser = buildResultsByUser(results);
 
-    const psychResults = results.filter((r) => r.test_type === "psychological");
+    const psychResults = (results || []).filter((r) => r.test_type === "psychological");
     const highUsers = new Set();
     const medUsers = new Set();
     for (const r of psychResults) {
@@ -681,28 +652,39 @@ async function load() {
     radarAvgs.value = avgs;
 
     const rows = schools.map((sch) => {
-      const base = buildSchoolStatsRow(
-        sch,
-        students.filter((u) => u.school_id === sch.id),
-        byUser,
+      const schoolStudents = students.filter(
+        (u) => (u.school_id || u.schoolId) === sch.id,
       );
+      const ids = new Set(schoolStudents.map((u) => u.id));
+      const schoolPsychResults = psychResults.filter((r) => ids.has(r.user_id));
+      const highRiskCount = schoolPsychResults.filter((r) => r.risk_level === "high").length;
+      const totalStress = schoolPsychResults.reduce((sum, r) => sum + Number(r.total_score || 0), 0);
+      const avgStress = schoolPsychResults.length
+        ? Math.round((totalStress / schoolPsychResults.length) * 10) / 10
+        : 0;
       return {
-        ...base,
+        school_id: sch.id,
+        school_name: sch.name || sch.school_name,
+        school_code: sch.code || sch.school_code,
+        total_students: schoolStudents.length,
+        high_risk_count: highRiskCount,
+        avg_stress: avgStress,
+        is_active: sch.is_active !== false,
         hasPsychologist: psychBySchool.has(sch.id),
       };
     });
     schoolRows.value = rows;
 
     stats.value = {
-      schools: cSch ?? 0,
-      psychologists: cPsy ?? 0,
-      students: cStu ?? 0,
-      testsToday: cToday ?? 0,
+      schools: Number(statsData.schools ?? schools.length ?? 0),
+      psychologists: Number(statsData.psychologists ?? psychologists.length ?? 0),
+      students: Number(statsData.students ?? students.length ?? 0),
+      testsToday: Number(statsData.testsToday ?? statsData.tests_today ?? 0),
       highRiskStudents: highUsers.size,
       mediumRiskStudents: medUsers.size,
     };
-  } catch {
-    errorMessage.value = "Ma'lumotlarni yuklashda xatolik yuz berdi.";
+  } catch (error) {
+    errorMessage.value = getApiErrorMessage(error, "Ma'lumotlarni yuklashda xatolik yuz berdi.");
   } finally {
     loading.value = false;
     setTimeout(() => {
@@ -716,6 +698,12 @@ function exportExcel() {
   const run = () => {
     try {
       const d = new Date().toISOString().slice(0, 10);
+      api
+        .get("/api/admin/export", { responseType: "blob" })
+        .then((resp) => {
+          saveAs(new Blob([resp.data]), `hisobot-${d}.xlsx`);
+        })
+        .catch(() => {
       const wb = XLSX.utils.book_new();
 
       const schoolSheet = XLSX.utils.json_to_sheet(
@@ -747,6 +735,7 @@ function exportExcel() {
 
       const out = XLSX.write(wb, { bookType: "xlsx", type: "array" });
       saveAs(new Blob([out], { type: "application/octet-stream" }), `hisobot-${d}.xlsx`);
+        });
     } finally {
       exportingExcel.value = false;
     }

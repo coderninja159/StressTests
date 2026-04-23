@@ -8,8 +8,7 @@
         <BaseButton variant="primary" @click="openModal">Yangi psixolog qo'shish</BaseButton>
       </div>
 
-      <p v-if="!supabaseOk" class="alert">Supabase sozlanmagan.</p>
-      <LoadingSpinner v-else-if="loading" text="Yuklanmoqda..." />
+      <LoadingSpinner v-if="loading" text="Yuklanmoqda..." />
       <p v-else-if="pageError" class="alert">{{ pageError }}</p>
 
       <template v-else>
@@ -93,13 +92,11 @@ import MobileHeader from "../../components/layout/MobileHeader.vue";
 import BaseButton from "../../components/ui/BaseButton.vue";
 import BaseInput from "../../components/ui/BaseInput.vue";
 import LoadingSpinner from "../../components/ui/LoadingSpinner.vue";
-import { getEphemeralSupabase } from "../../lib/supabaseEphemeral";
-import { supabase } from "../../lib/supabase";
+import { api, getApiErrorMessage } from "../../lib/api";
 import { useAuthStore } from "../../stores/auth";
 
 const authStore = useAuthStore();
 
-const supabaseOk = Boolean(supabase);
 const loading = ref(true);
 const pageError = ref("");
 const formError = ref("");
@@ -184,41 +181,15 @@ async function load() {
   schools.value = [];
   psychologists.value = [];
 
-  if (!supabase) {
-    loading.value = false;
-    return;
-  }
-
   try {
-    const { data: s, error: e1 } = await supabase.from("schools").select("id, name, code, is_active").order("name");
-
-    if (e1) {
-      throw e1;
-    }
-    schools.value = s || [];
-
-    const { data: p, error: e2 } = await supabase
-      .from("users")
-      .select("id, full_name, created_at, school_id, email, schools(name)")
-      .eq("role", "psychologist")
-      .order("created_at", { ascending: false });
-
-    if (e2) {
-      const { data: p2, error: e3 } = await supabase
-        .from("users")
-        .select("id, full_name, created_at, school_id, schools(name)")
-        .eq("role", "psychologist")
-        .order("created_at", { ascending: false });
-
-      if (e3) {
-        throw e3;
-      }
-      psychologists.value = (p2 || []).map((row) => ({ ...row, email: null }));
-    } else {
-      psychologists.value = p || [];
-    }
-  } catch {
-    pageError.value = "Ma'lumotlarni yuklashda xatolik.";
+    const [schoolsResp, psychResp] = await Promise.all([
+      api.get("/api/admin/schools"),
+      api.get("/api/admin/psychologists"),
+    ]);
+    schools.value = schoolsResp.data?.schools || [];
+    psychologists.value = psychResp.data?.psychologists || [];
+  } catch (error) {
+    pageError.value = getApiErrorMessage(error, "Ma'lumotlarni yuklashda xatolik.");
   } finally {
     loading.value = false;
   }
@@ -226,63 +197,23 @@ async function load() {
 
 async function savePsychologist() {
   formError.value = "";
-  if (!validate() || !supabase) {
-    return;
-  }
-
-  const ephem = getEphemeralSupabase();
-  if (!ephem) {
-    formError.value = "Supabase sozlanmagan.";
+  if (!validate()) {
     return;
   }
 
   saveLoading.value = true;
   try {
-    const { data: authData, error: signErr } = await ephem.auth.signUp({
+    await api.post("/api/admin/psychologists", {
+      fullName: form.fullName.trim(),
       email: form.email.trim(),
       password: form.password,
-      options: {
-        data: {
-          full_name: form.fullName.trim(),
-        },
-      },
+      schoolId: form.schoolId,
     });
-
-    if (signErr) {
-      formError.value = signErr.message || "Ro'yxatdan o'tkazib bo'lmadi.";
-      return;
-    }
-
-    if (!authData?.user?.id) {
-      formError.value = "Foydalanuvchi yaratilmadi.";
-      return;
-    }
-
-    const authId = authData.user.id;
-
-    const basePayload = {
-      full_name: form.fullName.trim(),
-      role: "psychologist",
-      school_id: form.schoolId,
-      auth_id: authId,
-    };
-
-    let ins = await supabase.from("users").insert({ ...basePayload, email: form.email.trim() }).select("id").single();
-
-    if (ins.error) {
-      ins = await supabase.from("users").insert(basePayload).select("id").single();
-    }
-
-    if (ins.error) {
-      formError.value = "Profil yozilmadi. Iltimos, qayta urinib ko'ring.";
-      return;
-    }
-
     await authStore.fetchCurrentUser();
     closeModal();
     await load();
-  } catch {
-    formError.value = "Saqlashda xatolik yuz berdi.";
+  } catch (error) {
+    formError.value = getApiErrorMessage(error, "Saqlashda xatolik yuz berdi.");
   } finally {
     saveLoading.value = false;
   }
@@ -294,10 +225,7 @@ async function remove(p) {
   }
   deleteLoading.value = p.id;
   try {
-    const { error } = await supabase.from("users").delete().eq("id", p.id).eq("role", "psychologist");
-    if (error) {
-      throw error;
-    }
+    await api.delete(`/api/admin/psychologists/${encodeURIComponent(p.id)}`);
     await load();
   } catch {
     alert("O'chirishda xatolik.");

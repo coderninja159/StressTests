@@ -280,8 +280,8 @@ import "../../lib/chartSetup.js";
 
 import PsychologistSidebar from "../../components/layout/PsychologistSidebar.vue";
 import MobileHeader from "../../components/layout/MobileHeader.vue";
-import { getProfessionalAnalysis } from "../../lib/ai";
-import { supabase } from "../../lib/supabase";
+import { getProfessionalAnalysisByResultId } from "../../lib/ai";
+import { api, getApiErrorMessage } from "../../lib/api";
 import { useAuthStore } from "../../stores/auth";
 
 const route = useRoute();
@@ -476,43 +476,7 @@ function psychAnswerGroups(resultId) {
 
 async function loadAnswersForResults(results) {
   answersByResultId.value = {};
-  if (!supabase || !results?.length) return;
-  try {
-    const ids = results.map((r) => r.id);
-    const { data: rows, error } = await supabase.from("test_answers").select("*").in("result_id", ids);
-    if (error) throw error;
-    const qids = [...new Set((rows || []).map((r) => r.question_id).filter(Boolean))];
-    const qMap = {};
-    if (qids.length) {
-      const { data: qq, error: eq } = await supabase.from("questions").select("*").in("id", qids);
-      if (eq) throw eq;
-      for (const q of qq || []) qMap[q.id] = q;
-    }
-    const optIds = [...new Set((rows || []).map((r) => r.option_id).filter(Boolean))];
-    const oMap = {};
-    if (optIds.length) {
-      const { data: oo, error: eo } = await supabase.from("answer_options").select("*").in("id", optIds);
-      if (eo) throw eo;
-      for (const o of oo || []) oMap[o.id] = o;
-    }
-    const byResult = {};
-    for (const row of rows || []) {
-      if (!byResult[row.result_id]) byResult[row.result_id] = [];
-      byResult[row.result_id].push({
-        ...row,
-        question: qMap[row.question_id],
-        option: row.option_id ? oMap[row.option_id] : null,
-      });
-    }
-    for (const rid of Object.keys(byResult)) {
-      byResult[rid].sort(
-        (a, b) => (a.question?.order_num ?? 0) - (b.question?.order_num ?? 0),
-      );
-    }
-    answersByResultId.value = byResult;
-  } catch {
-    answersByResultId.value = {};
-  }
+  if (!results?.length) return;
 }
 
 async function loadProfessionalAi() {
@@ -524,14 +488,7 @@ async function loadProfessionalAi() {
 
   aiProLoading.value = true;
   try {
-    const text = await getProfessionalAnalysis(
-      lp.category_scores,
-      lp.risk_level,
-      {
-        age: student.value?.age,
-        className: student.value?.class_name,
-      },
-    );
+    const text = await getProfessionalAnalysisByResultId(lp.id);
     aiProText.value = text || "";
   } finally {
     aiProLoading.value = false;
@@ -563,12 +520,6 @@ async function load() {
     return;
   }
 
-  if (!supabase) {
-    errorMessage.value = "Supabase sozlanmagan.";
-    loading.value = false;
-    return;
-  }
-
   if (!schoolId.value) {
     errorMessage.value = "Maktab ma'lumoti topilmadi.";
     loading.value = false;
@@ -576,16 +527,9 @@ async function load() {
   }
 
   try {
-    const { data: u, error: e1 } = await supabase
-      .from("users")
-      .select("*")
-      .eq("id", id)
-      .eq("role", "student")
-      .single();
-
-    if (e1 || !u) {
-      throw new Error("notfound");
-    }
+    const { data: uResp } = await api.get(`/api/psychologist/students/${encodeURIComponent(id)}`);
+    const u = uResp?.student;
+    if (!uResp?.success || !u) throw new Error("notfound");
 
     if (u.school_id !== schoolId.value) {
       errorMessage.value = "Bu o'quvchini ko'rish huquqingiz yo'q.";
@@ -595,17 +539,8 @@ async function load() {
 
     student.value = u;
 
-    const { data: res, error: e2 } = await supabase
-      .from("results")
-      .select("*")
-      .eq("user_id", id)
-      .order("taken_at", { ascending: false });
-
-    if (e2) {
-      throw e2;
-    }
-
-    const list = res || [];
+    const { data: rResp } = await api.get(`/api/psychologist/students/${encodeURIComponent(id)}/results`);
+    const list = rResp?.results || [];
     allResults.value = list;
 
     const psych = list
@@ -621,8 +556,8 @@ async function load() {
     psychLineScores.value = psych.map((r) => Number(r.total_score || 0));
 
     await loadAnswersForResults(list);
-  } catch {
-    errorMessage.value = "O'quvchi yuklanmadi yoki topilmadi.";
+  } catch (error) {
+    errorMessage.value = getApiErrorMessage(error, "O'quvchi yuklanmadi yoki topilmadi.");
   } finally {
     loading.value = false;
   }

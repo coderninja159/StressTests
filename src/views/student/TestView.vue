@@ -226,9 +226,8 @@ const onPrimary = async () => {
     return;
   }
 
-  const userId = authStore.currentUser?.id;
   try {
-    await testStore.submitTest(userId);
+    await testStore.submitTest();
   } catch {
     // xabar store da
   }

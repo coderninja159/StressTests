@@ -4,6 +4,7 @@ import { pinia } from "../stores";
 
 import LoginView from "../views/auth/LoginView.vue";
 import RegisterView from "../views/auth/RegisterView.vue";
+import TelegramTasdiqDemoView from "../views/auth/TelegramTasdiqDemoView.vue";
 import StudentDashboardView from "../views/student/DashboardView.vue";
 import StudentTestView from "../views/student/TestView.vue";
 import StudentResultView from "../views/student/ResultView.vue";
@@ -17,11 +18,17 @@ import TestsView from "../views/admin/TestsView.vue";
 import PsychologistTestsView from "../views/psychologist/TestsView.vue";
 import AnalyticsView from "../views/admin/AnalyticsView.vue";
 import NotFoundView from "../views/NotFoundView.vue";
+import ForbiddenView from "../views/ForbiddenView.vue";
 
 const routes = [
   { path: "/", redirect: "/auth/login" },
   { path: "/auth/login", name: "login", component: LoginView },
   { path: "/auth/register", name: "register", component: RegisterView },
+  {
+    path: "/auth/telegram-tasdiq",
+    name: "telegram-tasdiq-demo",
+    component: TelegramTasdiqDemoView,
+  },
   {
     path: "/student/dashboard",
     name: "student-dashboard",
@@ -95,6 +102,7 @@ const routes = [
     component: AnalyticsView,
     meta: { requiresAuth: true, role: "admin" },
   },
+  { path: "/403", name: "forbidden", component: ForbiddenView },
   { path: "/:pathMatch(.*)*", name: "not-found", component: NotFoundView },
 ];
 
@@ -110,7 +118,7 @@ const roleHomeMap = {
 };
 
 // Himoya shart emas sahifalar
-const publicRoutes = ["login", "register", "not-found"];
+const publicRoutes = ["login", "register", "telegram-tasdiq-demo", "forbidden", "not-found"];
 
 router.beforeEach(async (to) => {
   const authStore = useAuthStore(pinia);
@@ -140,15 +148,15 @@ router.beforeEach(async (to) => {
 
   // Role tekshirish
   if (to.path.startsWith("/admin") && user.role !== "admin") {
-    return roleHomeMap[user.role] || "/auth/login";
+    return "/403";
   }
 
   if (to.path.startsWith("/psychologist") && user.role !== "psychologist") {
-    return roleHomeMap[user.role] || "/auth/login";
+    return "/403";
   }
 
   if (to.path.startsWith("/student") && user.role !== "student") {
-    return roleHomeMap[user.role] || "/auth/login";
+    return "/403";
   }
 
   return true;

@@ -214,14 +214,8 @@ import MobileHeader from "../../components/layout/MobileHeader.vue";
 import StatCard from "../../components/ui/StatCard.vue";
 import ChartCard from "../../components/ui/ChartCard.vue";
 import DataTable from "../../components/ui/DataTable.vue";
-import { supabase } from "../../lib/supabase";
+import { api, getApiErrorMessage } from "../../lib/api";
 import { useAuthStore } from "../../stores/auth";
-import {
-  buildResultsByUser,
-  buildSchoolStatsRow,
-  buildStudentFullRows,
-  fetchResultsForUserIds,
-} from "../../lib/legacyDashboardMetrics.js";
 
 function buildClassPresets() {
   const letters = ["A", "B", "C", "D"];
@@ -235,8 +229,8 @@ function buildClassPresets() {
 const CLASS_PRESETS = buildClassPresets();
 
 const authStore = useAuthStore();
-const supabaseOk = Boolean(supabase);
-const schoolId = computed(() => authStore.currentUser?.school_id ?? null);
+const supabaseOk = true;
+const schoolId = computed(() => authStore.currentUser?.school_id || authStore.currentUser?.schoolId || null);
 
 const loading = ref(true);
 const chartsLoading = ref(true);
@@ -555,7 +549,7 @@ const studentTableRows = computed(() =>
 );
 
 async function load() {
-  if (!supabase || !schoolId.value) {
+  if (!schoolId.value) {
     loading.value = false;
     chartsLoading.value = false;
     return;
@@ -564,40 +558,32 @@ async function load() {
   chartsLoading.value = true;
   errorMessage.value = "";
   try {
-    const sid = schoolId.value;
-    const { data: schoolRow } = await supabase.from("schools").select("*").eq("id", sid).maybeSingle();
-    if (!schoolRow) {
-      errorMessage.value = "Maktab topilmadi.";
-      loading.value = false;
-      chartsLoading.value = false;
-      return;
-    }
-    schoolName.value = schoolRow.name || "";
-
-    const { data: studs } = await supabase
-      .from("users")
-      .select("id, student_id, full_name, age, class_name, school_id, phone, created_at, role")
-      .eq("role", "student")
-      .eq("school_id", sid);
-
-    const students = studs || [];
-    const ids = students.map((u) => u.id);
-    const results = await fetchResultsForUserIds(supabase, ids);
+    const [statsResp, studentsResp] = await Promise.all([
+      api.get("/api/psychologist/stats"),
+      api.get("/api/psychologist/students"),
+    ]);
+    const statsData = statsResp.data?.stats || statsResp.data || {};
+    const students = studentsResp.data?.students || [];
+    const results = statsResp.data?.results || [];
     resultsRaw.value = results;
+    schoolName.value = statsData.schoolName || authStore.currentUser?.schoolName || "";
 
-    const byUser = buildResultsByUser(results);
-    const schoolMap = new Map([[sid, schoolRow]]);
-    studentsRaw.value = buildStudentFullRows(students, schoolMap, byUser);
+    studentsRaw.value = students.map((s) => {
+      const sid = s.student_id || s.studentId || "";
+      const userResults = results.filter((r) => r.user_id === s.id);
+      const last = [...userResults].sort((a, b) => new Date(b.taken_at) - new Date(a.taken_at))[0];
+      return {
+        ...s,
+        student_code: sid,
+        risk_level: last?.risk_level || "low",
+        last_test_date: last?.taken_at || null,
+      };
+    });
 
-    const stats = buildSchoolStatsRow(schoolRow, students, byUser);
-    const weekAgo = Date.now() - 7 * 86400000;
-    const weekTesters = new Set(
-      results.filter((r) => r.taken_at && new Date(r.taken_at).getTime() >= weekAgo).map((r) => r.user_id),
-    );
     totals.value = {
-      students: stats.total_students,
-      weekTesters: weekTesters.size,
-      notTested: stats.not_tested_students,
+      students: Number(statsData.students ?? students.length ?? 0),
+      weekTesters: Number(statsData.weekTesters ?? statsData.week_testers ?? 0),
+      notTested: Number(statsData.notTested ?? statsData.not_tested ?? 0),
     };
 
     const psych = results.filter((r) => r.test_type === "psychological");
@@ -635,8 +621,8 @@ async function load() {
     areaLabels.value = labels;
     areaPsych.value = pCounts;
     areaPortrait.value = oCounts;
-  } catch {
-    errorMessage.value = "Ma'lumotlarni yuklashda xatolik.";
+  } catch (error) {
+    errorMessage.value = getApiErrorMessage(error, "Ma'lumotlarni yuklashda xatolik.");
   } finally {
     loading.value = false;
     setTimeout(() => {

@@ -2,6 +2,7 @@ import { computed, ref } from "vue";
 import { defineStore } from "pinia";
 
 import { supabase } from "../lib/supabase";
+import { api, getApiErrorMessage } from "../lib/api";
 import router from "../router";
 
 const missingSupabaseMessage =
@@ -367,16 +368,7 @@ export const useTestStore = defineStore("test", () => {
     };
   };
 
-  const submitTest = async (userId) => {
-    if (!supabase) {
-      errorMessage.value = missingSupabaseMessage;
-      return null;
-    }
-
-    if (!userId) {
-      errorMessage.value = "Foydalanuvchi aniqlanmadi. Qayta kiring.";
-      return null;
-    }
+  const submitTest = async () => {
 
     if (!currentTest.value || !questions.value.length) {
       errorMessage.value = "Test boshlanmagan.";
@@ -405,87 +397,31 @@ export const useTestStore = defineStore("test", () => {
     clearError();
 
     try {
-      if (testType === "psychological") {
-        const payload = buildPsychologicalPayload();
-        const { data, error } = await supabase
-          .from("results")
-          .insert({
-            user_id: userId,
-            test_type: "psychological",
-            total_score: payload.total_score,
-            risk_level: payload.risk_level,
-            category_scores: payload.category_scores,
-            personality_type: null,
-            ai_explanation: null,
-            ai_professional: null,
-          })
-          .select("id")
-          .single();
-
-        if (error) throw error;
-
-        const answerRows = [];
-        for (const q of questions.value) {
-          const raw = answers.value[q.id];
-          const points = PSYCH_ANSWER_SCORE[raw] ?? 0;
-          answerRows.push({
-            result_id: data.id,
+      const submitAnswers = questions.value.map((q) => {
+        if (testType === "psychological") {
+          return {
             question_id: q.id,
-            answer_value: raw,
-            option_id: null,
-            points,
-          });
+            answer_value: answers.value[q.id],
+          };
         }
-        if (answerRows.length) {
-          const { error: ansErr } = await supabase.from("test_answers").insert(answerRows);
-          if (ansErr) console.error("test_answers insert:", ansErr);
-        }
-
-        await router.push({ path: "/student/result", query: { id: data.id } });
-        resetForSelection();
-        return data.id;
-      }
-
-      const payload = buildPortraitPayload();
-      const { data, error } = await supabase
-        .from("results")
-        .insert({
-          user_id: userId,
-          test_type: "portrait",
-          total_score: payload.total_score,
-          risk_level: null,
-          category_scores: payload.category_scores,
-          personality_type: payload.personality_type,
-          ai_explanation: null,
-          ai_professional: null,
-        })
-        .select("id")
-        .single();
-
-      if (error) throw error;
-
-      const portraitRows = [];
-      for (const q of questions.value) {
-        const ans = answers.value[q.id];
-        if (!ans?.optionId) continue;
-        portraitRows.push({
-          result_id: data.id,
+        return {
           question_id: q.id,
-          answer_value: null,
-          option_id: ans.optionId,
-          points: ans.points ?? 0,
-        });
-      }
-      if (portraitRows.length) {
-        const { error: pe } = await supabase.from("test_answers").insert(portraitRows);
-        if (pe) console.error("test_answers portrait:", pe);
-      }
+          option_id: answers.value[q.id]?.optionId || null,
+        };
+      });
 
-      await router.push({ path: "/student/result", query: { id: data.id } });
+      const { data } = await api.post("/api/students/test/submit", {
+        test_type: testType,
+        answers: submitAnswers,
+      });
+      if (!data?.success || !data?.resultId) {
+        throw new Error("Natija saqlanmadi.");
+      }
+      await router.push({ path: "/student/result", query: { id: data.resultId } });
       resetForSelection();
-      return data.id;
+      return data.resultId;
     } catch (error) {
-      errorMessage.value = "Natijani saqlashda xatolik yuz berdi.";
+      errorMessage.value = getApiErrorMessage(error, "Natijani saqlashda xatolik yuz berdi.");
       throw error;
     } finally {
       isLoading.value = false;
