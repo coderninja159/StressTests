@@ -1,6 +1,7 @@
 import axios from "axios";
 
-const API_URL = String(import.meta.env.VITE_API_URL || "").replace(/\/+$/, "");
+const DEFAULT_API_URL = "https://stresstest-backend-1012645166107.us-central1.run.app";
+const API_URL = String(import.meta.env.VITE_API_URL || DEFAULT_API_URL).replace(/\/+$/, "");
 
 export const api = axios.create({
   baseURL: API_URL,
