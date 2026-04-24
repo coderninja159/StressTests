@@ -418,6 +418,11 @@ const submitRegister = async () => {
 
 const goToDashboard = async () => {
   showModal.value = false;
+  try {
+    await authStore.fetchCurrentUser();
+  } catch {
+    /* token bor bo'lsa profil yangilanadi */
+  }
   await router.push("/student/dashboard");
 };
 </script>

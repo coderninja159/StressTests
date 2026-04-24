@@ -193,7 +193,14 @@
               </span>
             </template>
             <template #cell-actions="{ row }">
-              <RouterLink class="row-action" :to="'/psychologist/students/' + row.id">Ko'rish</RouterLink>
+              <RouterLink
+                v-if="row.detailRouteParam"
+                class="row-action"
+                :to="{ name: 'psychologist-student-detail', params: { studentId: row.detailRouteParam } }"
+              >
+                Ko'rish
+              </RouterLink>
+              <span v-else class="row-action row-action--disabled">—</span>
             </template>
           </DataTable>
         </section>
@@ -214,7 +221,8 @@ import MobileHeader from "../../components/layout/MobileHeader.vue";
 import StatCard from "../../components/ui/StatCard.vue";
 import ChartCard from "../../components/ui/ChartCard.vue";
 import DataTable from "../../components/ui/DataTable.vue";
-import { api, getApiErrorMessage } from "../../lib/api";
+import { api, getApiErrorMessage, psychologistStudentsItems, coerceResultsArray } from "../../lib/api";
+import { studentPsychologistDetailParam } from "../../lib/studentsListHelpers.js";
 import { useAuthStore } from "../../stores/auth";
 
 function buildClassPresets() {
@@ -541,6 +549,7 @@ const studentTableRows = computed(() =>
   studentsEnriched.value.map((s) => ({
     ...s,
     idx: 0,
+    detailRouteParam: studentPsychologistDetailParam(s),
     last_test: s.last_test_date,
     phone: s.phone || "—",
     class_name: s.class_name || "—",
@@ -563,8 +572,8 @@ async function load() {
       api.get("/api/psychologist/students"),
     ]);
     const statsData = statsResp.data?.stats || statsResp.data || {};
-    const students = studentsResp.data?.students || [];
-    const results = statsResp.data?.results || [];
+    const students = psychologistStudentsItems(studentsResp.data);
+    const results = coerceResultsArray(statsResp.data);
     resultsRaw.value = results;
     schoolName.value = statsData.schoolName || authStore.currentUser?.schoolName || "";
 
@@ -1121,5 +1130,12 @@ function exportExcel() {
   .row-action {
     opacity: 1;
   }
+}
+
+.row-action--disabled {
+  opacity: 1;
+  color: var(--text-muted-prof, #94a3b8);
+  pointer-events: none;
+  font-weight: 500;
 }
 </style>

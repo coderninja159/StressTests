@@ -63,6 +63,16 @@ export function testTypeToUz(testType) {
   return "—";
 }
 
+/** Psixolog detail URL: users.id (UUID) yoki student_id (ST-...) */
+export function studentPsychologistDetailParam(s) {
+  if (!s) return "";
+  const u = s.id ?? s.user_id;
+  if (u != null && String(u).trim() !== "") return String(u).trim();
+  const sid = s.student_id ?? s.studentId;
+  if (sid != null && String(sid).trim() !== "") return String(sid).trim();
+  return "";
+}
+
 /**
  * @param {object} params
  * @param {Array<{id:string,full_name?:string,class_name?:string|null,age?:number|null,phone?:string|null}>} params.students
@@ -90,7 +100,8 @@ export function buildStudentRows({ students, results }) {
     if (!prevA || t > new Date(prevA.taken_at || 0).getTime()) anyLatest.set(uid, r);
   }
 
-  return (students || []).map((s) => {
+  return (students || []).map((s, idx) => {
+    const rowKey = studentPsychologistDetailParam(s) || `row-${idx}`;
     const lastPsych = psychLatest.get(s.id) || null;
     const lastPortrait = portraitLatest.get(s.id) || null;
     const lastAny = anyLatest.get(s.id) || null;
@@ -100,6 +111,8 @@ export function buildStudentRows({ students, results }) {
 
     return {
       ...s,
+      _rowKey: rowKey,
+      detailRouteParam: studentPsychologistDetailParam(s),
       lastPsych,
       lastPortrait,
       lastAny,

@@ -281,7 +281,7 @@ import "../../lib/chartSetup.js";
 import PsychologistSidebar from "../../components/layout/PsychologistSidebar.vue";
 import MobileHeader from "../../components/layout/MobileHeader.vue";
 import { getProfessionalAnalysisByResultId } from "../../lib/ai";
-import { api, getApiErrorMessage } from "../../lib/api";
+import { api, getApiErrorMessage, coerceResultsArray } from "../../lib/api";
 import { useAuthStore } from "../../stores/auth";
 
 const route = useRoute();
@@ -513,8 +513,8 @@ async function load() {
   psychLineLabels.value = [];
   psychLineScores.value = [];
 
-  const id = route.params.id;
-  if (!id || typeof id !== "string") {
+  const studentId = route.params.studentId;
+  if (!studentId || typeof studentId !== "string") {
     errorMessage.value = "Noto'g'ri manzil.";
     loading.value = false;
     return;
@@ -527,7 +527,9 @@ async function load() {
   }
 
   try {
-    const { data: uResp } = await api.get(`/api/psychologist/students/${encodeURIComponent(id)}`);
+    const { data: uResp } = await api.get(
+      `/api/psychologist/students/${encodeURIComponent(studentId)}`,
+    );
     const u = uResp?.student;
     if (!uResp?.success || !u) throw new Error("notfound");
 
@@ -539,8 +541,10 @@ async function load() {
 
     student.value = u;
 
-    const { data: rResp } = await api.get(`/api/psychologist/students/${encodeURIComponent(id)}/results`);
-    const list = rResp?.results || [];
+    const { data: rResp } = await api.get(
+      `/api/psychologist/students/${encodeURIComponent(studentId)}/results`,
+    );
+    const list = coerceResultsArray(rResp);
     allResults.value = list;
 
     const psych = list
@@ -568,7 +572,7 @@ onMounted(() => {
 });
 
 watch(
-  () => route.params.id,
+  () => route.params.studentId,
   () => {
     load();
   },

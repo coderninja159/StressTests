@@ -14,8 +14,6 @@
     <LoadingSpinner v-if="loading" text="Ma'lumotlar yuklanmoqda..." />
 
     <template v-else>
-      <p v-if="loadError" class="alert">{{ loadError }}</p>
-
       <div class="quick-stats">
         <BaseCard class="stat-card">
           <p class="stat-label">Student ID</p>
@@ -33,11 +31,26 @@
 
       <BaseCard class="panel mb">
         <h2 class="card-title">Oxirgi test natijasi</h2>
-        <template v-if="latestResult">
+        <template v-if="resultLoading">
+          <div class="result-skeleton" aria-hidden="true">
+            <div class="sk-line w-40" />
+            <div class="sk-line w-70" />
+            <div class="sk-line w-55" />
+          </div>
+        </template>
+        <ApiErrorAlert
+          v-else-if="loadError"
+          :message="loadError"
+          :retryable="true"
+          :show-details="isDev"
+          :details="loadErrorDetails"
+          @retry="loadLatest"
+        />
+        <template v-else-if="latestResult">
           <ul class="info-list">
             <li><span>Test turi:</span> {{ testTypeLabel(latestResult.test_type) }}</li>
             <li><span>Xavf / natija:</span> {{ resultRiskOrPortrait(latestResult) }}</li>
-            <li><span>Sana:</span> {{ formatDate(latestResult.taken_at) }}</li>
+            <li><span>Sana:</span> {{ formatDate(latestResult.taken_at || "Noma'lum vaqt") }}</li>
           </ul>
           <BaseButton variant="primary" class="mt" @click="openResult">Natijani ko'rish</BaseButton>
         </template>
@@ -75,8 +88,14 @@ import { useRouter } from "vue-router";
 
 import BaseButton from "../../components/ui/BaseButton.vue";
 import BaseCard from "../../components/ui/BaseCard.vue";
+import ApiErrorAlert from "../../components/ui/ApiErrorAlert.vue";
 import LoadingSpinner from "../../components/ui/LoadingSpinner.vue";
-import { api, getApiErrorMessage } from "../../lib/api";
+import {
+  api,
+  getApiErrorMessage,
+  normalizeStudentResults,
+  technicalErrorDetails,
+} from "../../lib/api";
 import { useAuthStore } from "../../stores/auth";
 import { useTestStore } from "../../stores/test";
 
@@ -85,15 +104,25 @@ const authStore = useAuthStore();
 const testStore = useTestStore();
 
 const loading = ref(true);
+const resultLoading = ref(false);
 const loadError = ref("");
+const loadErrorDetails = ref(null);
 const latestResult = ref(null);
+const isDev = import.meta.env.DEV;
 
-const studentName = computed(() => authStore.currentUser?.full_name || "O'quvchi");
-const studentIdDisplay = computed(() => authStore.currentUser?.student_id || "—");
-const classDisplay = computed(() => authStore.currentUser?.class_name || "—");
-const ageDisplay = computed(() =>
-  authStore.currentUser?.age != null ? String(authStore.currentUser.age) : "—",
+const studentName = computed(
+  () => authStore.currentUser?.full_name || authStore.currentUser?.fullName || "O'quvchi",
 );
+const studentIdDisplay = computed(
+  () => authStore.currentUser?.student_id || authStore.currentUser?.studentId || "—",
+);
+const classDisplay = computed(
+  () => authStore.currentUser?.class_name || authStore.currentUser?.className || "—",
+);
+const ageDisplay = computed(() => {
+  const a = authStore.currentUser?.age;
+  return a != null && a !== "" ? String(a) : "—";
+});
 
 function testTypeLabel(t) {
   if (t === "psychological") return "Psixologik test";
@@ -140,16 +169,22 @@ function formatDate(iso) {
 }
 
 async function loadLatest() {
+  resultLoading.value = true;
   loadError.value = "";
+  loadErrorDetails.value = null;
   latestResult.value = null;
 
   try {
     const { data } = await api.get("/api/students/me/results", {
       params: { limit: 1, offset: 0 },
     });
-    latestResult.value = data?.success ? data.results?.[0] || null : null;
+    const list = data?.success ? normalizeStudentResults(data) : [];
+    latestResult.value = list[0] || null;
   } catch (error) {
     loadError.value = getApiErrorMessage(error, "Oxirgi natijani yuklab bo'lmadi.");
+    loadErrorDetails.value = technicalErrorDetails(error);
+  } finally {
+    resultLoading.value = false;
   }
 }
 
@@ -175,6 +210,11 @@ async function onLogout() {
 
 onMounted(async () => {
   loading.value = true;
+  try {
+    await authStore.fetchCurrentUser();
+  } catch {
+    /* sessiya / tarmoq */
+  }
   await loadLatest();
   loading.value = false;
 });
@@ -200,6 +240,38 @@ onMounted(async () => {
 .hero-actions {
   display: flex;
   align-items: center;
+}
+
+.result-skeleton {
+  display: grid;
+  gap: 10px;
+}
+
+.sk-line {
+  height: 12px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+  background-size: 300% 100%;
+  animation: sk 1.2s infinite linear;
+}
+
+.w-40 {
+  width: 40%;
+}
+.w-55 {
+  width: 55%;
+}
+.w-70 {
+  width: 70%;
+}
+
+@keyframes sk {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: 0 0;
+  }
 }
 
 .hero-kicker {

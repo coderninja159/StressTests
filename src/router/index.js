@@ -60,7 +60,7 @@ const routes = [
     meta: { requiresAuth: true, role: "psychologist" },
   },
   {
-    path: "/psychologist/students/:id",
+    path: "/psychologist/students/:studentId",
     name: "psychologist-student-detail",
     component: StudentDetailView,
     meta: { requiresAuth: true, role: "psychologist" },

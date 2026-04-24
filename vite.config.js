@@ -10,6 +10,12 @@ export default defineConfig({
   },
   server: {
     proxy: {
+      // app backend (dev): CORS muammosiz ishlashi uchun
+      "/api": {
+        target: "https://stresstest-backend-1012645166107.us-central1.run.app",
+        changeOrigin: true,
+        secure: true,
+      },
       // telegram-bot: npm run dev (API + polling) — lokal 3847
       "/api/telegram": {
         target: "http://127.0.0.1:3847",

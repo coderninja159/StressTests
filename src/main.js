@@ -27,6 +27,14 @@ if (import.meta.env.DEV) {
 
 const app = createApp(App);
 
+app.config.errorHandler = (err, instance, info) => {
+  console.error("[GlobalErrorBoundary]", { err, info, component: instance?.$options?.name || "anonymous" });
+};
+
+window.addEventListener("unhandledrejection", (event) => {
+  console.error("[UnhandledPromiseRejection]", event.reason);
+});
+
 app.use(pinia);
 useThemeStore().init();
 app.use(router);

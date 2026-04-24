@@ -59,6 +59,8 @@
 import { computed, ref } from "vue";
 import { RouterLink } from "vue-router";
 
+import { api, serverMessageFromBody } from "../../lib/api";
+
 const loading = ref(false);
 const polling = ref(false);
 const errorMsg = ref("");
@@ -82,16 +84,13 @@ async function createSession() {
   loading.value = true;
   step.value = 1;
   try {
-    const r = await fetch("/api/telegram/session", { method: "POST", headers: { "Content-Type": "application/json" } });
-    const j = await r.json().catch(() => ({}));
-    if (!r.ok) {
-      throw new Error(j.error || `HTTP ${r.status}`);
-    }
+    const { data: j } = await api.post("/api/telegram/session", {});
     linkToken.value = j.link_token;
     deepLink.value = j.deep_link;
   } catch (e) {
+    const msg = serverMessageFromBody(e?.response?.data) || String(e.message || e);
     errorMsg.value =
-      String(e.message || e) +
+      msg +
       " — telegram-bot ishlamoqdamimi? (telegram-bot da npm run dev) va Supabase service_role qo‘yilganmi?";
     step.value = 0;
   } finally {
@@ -104,14 +103,13 @@ async function checkStatus() {
   errorMsg.value = "";
   polling.value = true;
   try {
-    const r = await fetch(`/api/telegram/session/${encodeURIComponent(linkToken.value)}`);
-    const j = await r.json().catch(() => ({}));
+    const { data: j } = await api.get(`/api/telegram/session/${encodeURIComponent(linkToken.value)}`);
     status.value = j.status || "error";
     if (j.status === "confirmed") {
       step.value = 3;
     }
   } catch (e) {
-    errorMsg.value = String(e.message || e);
+    errorMsg.value = serverMessageFromBody(e?.response?.data) || String(e.message || e);
   } finally {
     polling.value = false;
   }

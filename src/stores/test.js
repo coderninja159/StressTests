@@ -2,7 +2,7 @@ import { computed, ref } from "vue";
 import { defineStore } from "pinia";
 
 import { supabase } from "../lib/supabase";
-import { api, getApiErrorMessage } from "../lib/api";
+import { api, getTestSubmitErrorMessage } from "../lib/api";
 import router from "../router";
 
 const missingSupabaseMessage =
@@ -410,10 +410,18 @@ export const useTestStore = defineStore("test", () => {
         };
       });
 
-      const { data } = await api.post("/api/students/test/submit", {
-        test_type: testType,
-        answers: submitAnswers,
-      });
+      let score = undefined;
+      if (testType === "psychological") {
+        score = submitAnswers.reduce(
+          (sum, row) => sum + (PSYCH_ANSWER_SCORE[row.answer_value] ?? 0),
+          0,
+        );
+      }
+
+      const body = { test_type: testType, answers: submitAnswers };
+      if (score != null) body.score = score;
+
+      const { data } = await api.post("/api/students/test/submit", body);
       if (!data?.success || !data?.resultId) {
         throw new Error("Natija saqlanmadi.");
       }
@@ -421,7 +429,7 @@ export const useTestStore = defineStore("test", () => {
       resetForSelection();
       return data.resultId;
     } catch (error) {
-      errorMessage.value = getApiErrorMessage(error, "Natijani saqlashda xatolik yuz berdi.");
+      errorMessage.value = getTestSubmitErrorMessage(error);
       throw error;
     } finally {
       isLoading.value = false;

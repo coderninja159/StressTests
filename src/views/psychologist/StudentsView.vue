@@ -21,6 +21,11 @@
         <span>Yuklanmoqda...</span>
       </div>
 
+      <div v-else-if="loadError" class="panel-warn" style="border-color: var(--st-border2, #cbd5e1)">
+        <AlertCircle :size="22" stroke-width="2" class="panel-warn__ic" />
+        <span>{{ loadError }}</span>
+      </div>
+
       <template v-else>
         <section class="stats-grid">
           <article class="stat-card stat-card--1" :style="{ animationDelay: '0ms' }">
@@ -220,7 +225,7 @@
               <TransitionGroup name="st-row" tag="tbody" :key="tbodyKey">
                 <tr
                   v-for="(row, idx) in filteredRows"
-                  :key="row.id"
+                  :key="row._rowKey"
                   class="data-row"
                   :style="{ '--row-d': `${Math.min(idx, 40) * 28}ms` }"
                 >
@@ -252,8 +257,20 @@
                   </td>
                   <td>
                     <div class="act-cell">
-                      <RouterLink class="btn-view" :to="'/psychologist/students/' + row.id">Ko'rish</RouterLink>
-                      <button type="button" class="btn-del" :disabled="deleteLoadingId === row.id" @click="removeStudent(row)">
+                      <RouterLink
+                        v-if="row.detailRouteParam"
+                        class="btn-view"
+                        :to="{ name: 'psychologist-student-detail', params: { studentId: row.detailRouteParam } }"
+                      >
+                        Ko'rish
+                      </RouterLink>
+                      <span v-else class="btn-view btn-view--disabled">—</span>
+                      <button
+                        type="button"
+                        class="btn-del"
+                        :disabled="deleteLoadingId === row.detailRouteParam"
+                        @click="removeStudent(row)"
+                      >
                         O'chirish
                       </button>
                     </div>
@@ -293,7 +310,7 @@ import {
 
 import PsychologistSidebar from "../../components/layout/PsychologistSidebar.vue";
 import MobileHeader from "../../components/layout/MobileHeader.vue";
-import { api, getApiErrorMessage } from "../../lib/api";
+import { api, getApiErrorMessage, psychologistStudentsItems, coerceResultsArray } from "../../lib/api";
 import { useAuthStore } from "../../stores/auth";
 import {
   DIRECTION_KEYS,
@@ -308,6 +325,7 @@ const authStore = useAuthStore();
 const schoolId = computed(() => authStore.currentUser?.school_id ?? null);
 
 const loading = ref(true);
+const loadError = ref("");
 const students = ref([]);
 const results = ref([]);
 const deleteLoadingId = ref(null);
@@ -487,6 +505,7 @@ async function exportExcel() {
 
 async function load() {
   loading.value = true;
+  loadError.value = "";
   students.value = [];
   results.value = [];
   try {
@@ -494,10 +513,10 @@ async function load() {
       api.get("/api/psychologist/students"),
       api.get("/api/psychologist/stats"),
     ]);
-    students.value = studentsResp?.students || [];
-    results.value = statsResp?.results || [];
+    students.value = psychologistStudentsItems(studentsResp);
+    results.value = coerceResultsArray(statsResp);
   } catch (error) {
-    console.error(getApiErrorMessage(error, "Psixolog ma'lumotlarini yuklashda xatolik."));
+    loadError.value = getApiErrorMessage(error, "Psixolog ma'lumotlarini yuklashda xatolik.");
     students.value = [];
     results.value = [];
   } finally {
@@ -1462,6 +1481,13 @@ watch(schoolId, () => load());
 .btn-view:hover {
   background: var(--st-accent);
   color: #fff;
+}
+
+.btn-view--disabled {
+  border-color: var(--st-border);
+  color: var(--st-text3);
+  cursor: default;
+  pointer-events: none;
 }
 
 .btn-del {

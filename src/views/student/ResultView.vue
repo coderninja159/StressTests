@@ -8,8 +8,14 @@
     </div>
 
     <div v-else-if="errorMessage" class="card error-card">
-      <p>{{ errorMessage }}</p>
-      <button type="button" class="btn primary" @click="goTest">Testlar sahifasiga</button>
+      <ApiErrorAlert
+        :message="errorMessage"
+        :retryable="true"
+        :show-details="isDev"
+        :details="errorDetails"
+        @retry="loadResult"
+      />
+      <button type="button" class="btn primary mt-12" @click="goTest">Testlar sahifasiga</button>
     </div>
 
     <template v-else-if="result">
@@ -116,8 +122,14 @@
 import { computed, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
+import ApiErrorAlert from "../../components/ui/ApiErrorAlert.vue";
 import { getStudentExplanationByResultId } from "../../lib/ai";
-import { api, getApiErrorMessage } from "../../lib/api";
+import {
+  api,
+  getApiErrorMessage,
+  normalizeStudentResultItem,
+  technicalErrorDetails,
+} from "../../lib/api";
 import { useAuthStore } from "../../stores/auth";
 import { useTestStore } from "../../stores/test";
 
@@ -128,7 +140,9 @@ const testStore = useTestStore();
 
 const loading = ref(true);
 const errorMessage = ref("");
+const errorDetails = ref(null);
 const result = ref(null);
+const isDev = import.meta.env.DEV;
 
 const aiLoading = ref(false);
 const aiParagraphs = ref([]);
@@ -232,6 +246,7 @@ async function fetchStudentAi(r) {
 
 const loadResult = async () => {
   errorMessage.value = "";
+  errorDetails.value = null;
   result.value = null;
 
   const id = route.query.id;
@@ -245,7 +260,7 @@ const loadResult = async () => {
 
   try {
     const { data: resp } = await api.get(`/api/students/me/results/${encodeURIComponent(id)}`);
-    const data = resp?.result;
+    const data = normalizeStudentResultItem(resp?.result);
     if (!resp?.success || !data) {
       throw new Error("empty");
     }
@@ -261,6 +276,7 @@ const loadResult = async () => {
     await fetchStudentAi(data);
   } catch (error) {
     errorMessage.value = getApiErrorMessage(error, "Natija yuklanmadi yoki topilmadi.");
+    errorDetails.value = technicalErrorDetails(error);
   } finally {
     loading.value = false;
   }
@@ -295,6 +311,10 @@ watch(
   margin: 0 auto;
   position: relative;
   isolation: isolate;
+}
+
+.mt-12 {
+  margin-top: 12px;
 }
 
 .result-page::before,
