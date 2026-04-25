@@ -202,6 +202,7 @@ import { computed, reactive, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useAuthStore } from "../../stores/auth";
 import AppTopbar from "../../components/layout/AppTopbar.vue";
+import { logInfo, logWarn } from "../../lib/logger";
 
 const route = useRoute();
 const router = useRouter();
@@ -222,8 +223,8 @@ const PHONE_RE = /^\+998[0-9]{9}$/;
 
 const classOptions = Array.from({ length: 11 }, (_, i) => i + 1).flatMap((grade) => ["A", "B", "D"].map((letter) => `${grade}-${letter}`));
 
-/** Faqat harflar va lotincha qisqartma uchun ' (defis, raqam, bo'sh joy yo'q) */
-const NAME_PART_RE = /^[\p{L}']+$/u;
+/** Faqat harflar (raqam/belgi yo'q) */
+const NAME_PART_RE = /^\p{L}+$/u;
 
 function validateFirstName(showEmpty) {
   const t = String(form.firstName || "").trim();
@@ -236,7 +237,7 @@ function validateFirstName(showEmpty) {
     return false;
   }
   if (!NAME_PART_RE.test(t)) {
-    errors.firstName = "Faqat harflar: defis (-), raqam va boshqa belgilar mumkin emas";
+    errors.firstName = "Ismda faqat harflar bo'lishi mumkin";
     return false;
   }
   errors.firstName = "";
@@ -254,7 +255,7 @@ function validateLastName(showEmpty) {
     return false;
   }
   if (!NAME_PART_RE.test(t)) {
-    errors.lastName = "Faqat harflar: defis (-), raqam va boshqa belgilar mumkin emas";
+    errors.lastName = "Familiyada faqat harflar bo'lishi mumkin";
     return false;
   }
   errors.lastName = "";
@@ -283,7 +284,7 @@ function validatePhone(showEmpty) {
     return false;
   }
   if (!PHONE_RE.test(cleaned)) {
-    errors.phone = "+998 bilan boshlab 12 ta raqam kiriting";
+    errors.phone = "Telefon +998 dan keyin aynan 9 ta raqam bo'lishi kerak";
     return false;
   }
   errors.phone = "";
@@ -301,7 +302,7 @@ function validateClass(showEmpty) {
 
 function cleanNamePart(e) {
   return String(e.target.value || "")
-    .replace(/[^\p{L}']/gu, "")
+    .replace(/[^\p{L}]/gu, "")
     .trimStart();
 }
 
@@ -337,13 +338,12 @@ const onAgeBlur = () => {
 };
 
 const onPhoneInput = (e) => {
-  let v = String(e.target.value || "").replace(/\s/g, "");
-  if (v && !v.startsWith("+")) {
-    v = v.replace(/^0+/, "");
-    if (!v.startsWith("998")) v = `998${v}`;
-    v = `+${v}`;
-  }
-  form.phone = v;
+  const raw = String(e.target.value || "");
+  // Har doim +998 prefiks + undan keyin faqat 9 ta raqam
+  let digits = raw.replace(/\D/g, "");
+  if (digits.startsWith("998")) digits = digits.slice(3);
+  digits = digits.slice(0, 9);
+  form.phone = `+998${digits}`;
   if (touched.phone) validatePhone(true);
 };
 
@@ -418,10 +418,40 @@ const submitRegister = async () => {
 
 const goToDashboard = async () => {
   showModal.value = false;
+  logInfo("REGISTER_VIEW", "GO_DASHBOARD_CLICK", {
+    hasToken: Boolean(authStore.token),
+    studentId: createdStudentId.value || null,
+  });
+
+  if (!authStore.token && createdStudentId.value) {
+    try {
+      await authStore.loginStudentWithId(createdStudentId.value);
+      logInfo("REGISTER_VIEW", "AUTO_LOGIN_AFTER_REGISTER_OK", {
+        studentId: createdStudentId.value,
+      });
+      return;
+    } catch {
+      logWarn("REGISTER_VIEW", "AUTO_LOGIN_AFTER_REGISTER_FAIL");
+    }
+  }
+
   try {
     await authStore.fetchCurrentUser();
   } catch {
     /* token bor bo'lsa profil yangilanadi */
+  }
+
+  if (!authStore.isAuthenticated) {
+    logWarn("REGISTER_VIEW", "NO_SESSION_REDIRECT_LOGIN");
+    await router.push({
+      path: "/auth/login",
+      query: {
+        tab: "student",
+        studentMode: "return",
+        studentId: createdStudentId.value || "",
+      },
+    });
+    return;
   }
   await router.push("/student/dashboard");
 };

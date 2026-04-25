@@ -92,7 +92,12 @@ import MobileHeader from "../../components/layout/MobileHeader.vue";
 import BaseButton from "../../components/ui/BaseButton.vue";
 import BaseInput from "../../components/ui/BaseInput.vue";
 import LoadingSpinner from "../../components/ui/LoadingSpinner.vue";
-import { api, getApiErrorMessage } from "../../lib/api";
+import {
+  api,
+  getApiErrorMessage,
+  adminSchoolsItems,
+  adminPsychologistsItems,
+} from "../../lib/api";
 import { useAuthStore } from "../../stores/auth";
 
 const authStore = useAuthStore();
@@ -186,8 +191,24 @@ async function load() {
       api.get("/api/admin/schools"),
       api.get("/api/admin/psychologists"),
     ]);
-    schools.value = schoolsResp.data?.schools || [];
-    psychologists.value = psychResp.data?.psychologists || [];
+    schools.value = adminSchoolsItems(schoolsResp.data).map((s) => ({
+      ...s,
+      name: s.name || s.school_name || "—",
+      code: s.code || s.school_code || "",
+    }));
+    const dedup = new Map();
+    for (const p of adminPsychologistsItems(psychResp.data)) {
+      if (p?.is_active === false || p?.deleted_at) continue;
+      const key = p.id || p.email || `${p.full_name || p.fullName}-${p.school_id || p.schoolId}`;
+      if (!key || dedup.has(key)) continue;
+      dedup.set(key, {
+        ...p,
+        full_name: p.full_name || p.fullName || "—",
+        school_id: p.school_id || p.schoolId || null,
+        schools: p.schools || null,
+      });
+    }
+    psychologists.value = [...dedup.values()];
   } catch (error) {
     pageError.value = getApiErrorMessage(error, "Ma'lumotlarni yuklashda xatolik.");
   } finally {

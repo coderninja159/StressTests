@@ -311,6 +311,7 @@ import {
 import PsychologistSidebar from "../../components/layout/PsychologistSidebar.vue";
 import MobileHeader from "../../components/layout/MobileHeader.vue";
 import { api, getApiErrorMessage, psychologistStudentsItems, coerceResultsArray } from "../../lib/api";
+import { logError, logInfo } from "../../lib/logger";
 import { useAuthStore } from "../../stores/auth";
 import {
   DIRECTION_KEYS,
@@ -322,7 +323,7 @@ import {
 } from "../../lib/studentsListHelpers.js";
 
 const authStore = useAuthStore();
-const schoolId = computed(() => authStore.currentUser?.school_id ?? null);
+const schoolId = computed(() => authStore.currentUser?.school_id || authStore.currentUser?.schoolId || null);
 
 const loading = ref(true);
 const loadError = ref("");
@@ -504,6 +505,7 @@ async function exportExcel() {
 }
 
 async function load() {
+  logInfo("PSY_STUDENTS", "LOAD_START", { schoolId: schoolId.value || null });
   loading.value = true;
   loadError.value = "";
   students.value = [];
@@ -515,10 +517,15 @@ async function load() {
     ]);
     students.value = psychologistStudentsItems(studentsResp);
     results.value = coerceResultsArray(statsResp);
+    logInfo("PSY_STUDENTS", "LOAD_OK", {
+      students: students.value.length,
+      results: results.value.length,
+    });
   } catch (error) {
     loadError.value = getApiErrorMessage(error, "Psixolog ma'lumotlarini yuklashda xatolik.");
     students.value = [];
     results.value = [];
+    logError("PSY_STUDENTS", "LOAD_FAIL", { message: loadError.value });
   } finally {
     loading.value = false;
   }

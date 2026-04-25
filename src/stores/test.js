@@ -3,6 +3,9 @@ import { defineStore } from "pinia";
 
 import { supabase } from "../lib/supabase";
 import { api, getTestSubmitErrorMessage } from "../lib/api";
+import { logError, logInfo } from "../lib/logger";
+import { useAuthStore } from "./auth";
+import { getLocalQuestionsFixture } from "../lib/seedQuestions";
 import router from "../router";
 
 const missingSupabaseMessage =
@@ -71,6 +74,7 @@ async function fetchQuestionsForTest(testType, studentSchoolId) {
 }
 
 export const useTestStore = defineStore("test", () => {
+  const authStore = useAuthStore();
   const currentTest = ref(null);
   const questions = ref([]);
   const answerOptionsByQuestionId = ref({});
@@ -110,18 +114,50 @@ export const useTestStore = defineStore("test", () => {
     answers.value = {};
     currentQuestionIndex.value = 0;
     clearError();
+    logInfo("TEST", "START_TEST", { testType });
   };
 
   const loadQuestions = async (testType, studentSchoolId = null) => {
-    if (!supabase) {
-      errorMessage.value = missingSupabaseMessage;
-      return;
-    }
-
+    logInfo("TEST", "LOAD_QUESTIONS_START", { testType, studentSchoolId });
     isLoading.value = true;
     clearError();
 
     try {
+      if (!supabase) {
+        const local = getLocalQuestionsFixture(testType);
+        if (!local.questions.length) {
+          errorMessage.value = missingSupabaseMessage;
+          logError("TEST", "LOAD_QUESTIONS_FAIL_NO_SUPABASE", { message: errorMessage.value });
+          return;
+        }
+        questions.value = testType === "psychological"
+          ? pickRandom(local.questions.filter((q) => q.category === "lie_scale"), 3)
+              .concat(
+                pickRandom(local.questions.filter((q) => q.category === "delinquency"), 3),
+                pickRandom(local.questions.filter((q) => q.category === "addiction"), 3),
+                pickRandom(local.questions.filter((q) => q.category === "aggression"), 3),
+                pickRandom(local.questions.filter((q) => q.category === "self_harm"), 3),
+              )
+              .sort(() => Math.random() - 0.5)
+          : pickRandom(local.questions, 15);
+        if (testType === "portrait") {
+          const map = {};
+          for (const row of local.options) {
+            if (!map[row.question_id]) map[row.question_id] = [];
+            map[row.question_id].push(row);
+          }
+          answerOptionsByQuestionId.value = map;
+        } else {
+          answerOptionsByQuestionId.value = {};
+        }
+        currentQuestionIndex.value = 0;
+        logInfo("TEST", "LOAD_QUESTIONS_LOCAL_FALLBACK_OK", {
+          testType,
+          count: questions.value.length,
+        });
+        return;
+      }
+
       const { data: qs, error } = await fetchQuestionsForTest(testType, studentSchoolId);
 
       if (error) throw error;
@@ -192,13 +228,58 @@ export const useTestStore = defineStore("test", () => {
       }
 
       currentQuestionIndex.value = 0;
+      logInfo("TEST", "LOAD_QUESTIONS_OK", {
+        testType,
+        count: questions.value.length,
+      });
     } catch (error) {
+      const hintRaw = `${error?.message || ""} ${error?.details || ""}`.toLowerCase();
+      const shouldUseLocal =
+        hintRaw.includes("403") ||
+        hintRaw.includes("429") ||
+        hintRaw.includes("forbidden") ||
+        hintRaw.includes("too many requests");
+      if (shouldUseLocal) {
+        const local = getLocalQuestionsFixture(testType);
+        if (local.questions.length) {
+          questions.value = testType === "psychological"
+            ? pickRandom(local.questions.filter((q) => q.category === "lie_scale"), 3)
+                .concat(
+                  pickRandom(local.questions.filter((q) => q.category === "delinquency"), 3),
+                  pickRandom(local.questions.filter((q) => q.category === "addiction"), 3),
+                  pickRandom(local.questions.filter((q) => q.category === "aggression"), 3),
+                  pickRandom(local.questions.filter((q) => q.category === "self_harm"), 3),
+                )
+                .sort(() => Math.random() - 0.5)
+            : pickRandom(local.questions, 15);
+          if (testType === "portrait") {
+            const map = {};
+            for (const row of local.options) {
+              if (!map[row.question_id]) map[row.question_id] = [];
+              map[row.question_id].push(row);
+            }
+            answerOptionsByQuestionId.value = map;
+          } else {
+            answerOptionsByQuestionId.value = {};
+          }
+          currentQuestionIndex.value = 0;
+          errorMessage.value = "";
+          logInfo("TEST", "LOAD_QUESTIONS_LOCAL_FALLBACK_OK", {
+            testType,
+            count: questions.value.length,
+            reason: "supabase_403_429",
+          });
+          return;
+        }
+      }
+
       const hint = error?.message || error?.details || "";
       errorMessage.value = hint
         ? `Savollarni yuklashda xatolik: ${hint}`
         : "Savollarni yuklashda xatolik yuz berdi.";
       questions.value = [];
       answerOptionsByQuestionId.value = {};
+      logError("TEST", "LOAD_QUESTIONS_FAIL", { testType, message: errorMessage.value });
       throw error;
     } finally {
       isLoading.value = false;
@@ -369,6 +450,19 @@ export const useTestStore = defineStore("test", () => {
   };
 
   const submitTest = async () => {
+    logInfo("TEST", "SUBMIT_START", {
+      testType: currentTest.value,
+      questionCount: questions.value.length,
+    });
+
+    if (!authStore.token || authStore.currentUser?.role !== "student") {
+      errorMessage.value = "Sessiya yaroqsiz. Iltimos qayta kiring.";
+      logError("TEST", "SUBMIT_FAIL_NO_STUDENT_SESSION", {
+        hasToken: Boolean(authStore.token),
+        role: authStore.currentUser?.role || null,
+      });
+      return null;
+    }
 
     if (!currentTest.value || !questions.value.length) {
       errorMessage.value = "Test boshlanmagan.";
@@ -410,26 +504,52 @@ export const useTestStore = defineStore("test", () => {
         };
       });
 
-      let score = undefined;
-      if (testType === "psychological") {
-        score = submitAnswers.reduce(
-          (sum, row) => sum + (PSYCH_ANSWER_SCORE[row.answer_value] ?? 0),
-          0,
-        );
-      }
+      const localMetrics =
+        testType === "psychological"
+          ? buildPsychologicalPayload()
+          : buildPortraitPayload();
 
-      const body = { test_type: testType, answers: submitAnswers };
-      if (score != null) body.score = score;
+      const body = {
+        test_type: testType,
+        answers: submitAnswers,
+        score: localMetrics.total_score,
+        // Backend yangi contractda bu maydonlarni ham qabul qilsa, statistika aniqroq saqlanadi.
+        total_score: localMetrics.total_score,
+        risk_level: localMetrics.risk_level,
+        personality_type: localMetrics.personality_type,
+        category_scores: localMetrics.category_scores,
+      };
 
       const { data } = await api.post("/api/students/test/submit", body);
-      if (!data?.success || !data?.resultId) {
+      const resultId = data?.resultId || data?.result?.id || data?.data?.id || null;
+      if (!data?.success || !resultId) {
         throw new Error("Natija saqlanmadi.");
       }
-      await router.push({ path: "/student/result", query: { id: data.resultId } });
+      try {
+        // Backend category_scores ba'zan 0/bo'sh qaytganda result sahifada fallback sifatida ishlatamiz
+        sessionStorage.setItem(
+          `result_metrics_${resultId}`,
+          JSON.stringify({
+            test_type: testType,
+            total_score: localMetrics.total_score,
+            risk_level: localMetrics.risk_level,
+            personality_type: localMetrics.personality_type,
+            category_scores: localMetrics.category_scores,
+          }),
+        );
+      } catch {
+        // ignore storage errors
+      }
+      logInfo("TEST", "SUBMIT_OK", { testType, resultId });
+      await router.push({ path: "/student/result", query: { id: resultId } });
       resetForSelection();
-      return data.resultId;
+      return resultId;
     } catch (error) {
       errorMessage.value = getTestSubmitErrorMessage(error);
+      logError("TEST", "SUBMIT_FAIL", {
+        testType: currentTest.value,
+        message: errorMessage.value,
+      });
       throw error;
     } finally {
       isLoading.value = false;

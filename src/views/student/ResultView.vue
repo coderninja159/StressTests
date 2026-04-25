@@ -130,6 +130,7 @@ import {
   normalizeStudentResultItem,
   technicalErrorDetails,
 } from "../../lib/api";
+import { logError, logInfo } from "../../lib/logger";
 import { useAuthStore } from "../../stores/auth";
 import { useTestStore } from "../../stores/test";
 
@@ -152,8 +153,47 @@ const portraitKeys = ["leadership", "social", "intellectual", "emotional"];
 
 const psychBlock = (key) => {
   const cs = result.value?.category_scores;
-  return cs?.[key] || null;
+  const block = cs?.[key];
+  if (!block || typeof block !== "object") return null;
+  if (typeof block.max === "number") return block;
+  const score = Number(block.score || 0);
+  const percentage = Number(block.percentage || 0);
+  const derivedMax =
+    percentage > 0 ? Math.max(0, Math.round((score * 100) / percentage)) : Number(block.question_count || 0) * 2;
+  return { ...block, max: derivedMax || 0 };
 };
+
+function isEmptyPsychScores(cs) {
+  if (!cs || typeof cs !== "object") return true;
+  return psychBarKeys.every((k) => {
+    const b = cs[k];
+    if (!b || typeof b !== "object") return true;
+    const s = Number(b.score || 0);
+    const p = Number(b.percentage || 0);
+    return s <= 0 && p <= 0;
+  });
+}
+
+function mergeWithLocalMetrics(resultData) {
+  if (!resultData?.id) return resultData;
+  try {
+    const raw = sessionStorage.getItem(`result_metrics_${resultData.id}`);
+    if (!raw) return resultData;
+    const local = JSON.parse(raw);
+    if (!local || typeof local !== "object") return resultData;
+    if (resultData.test_type !== local.test_type) return resultData;
+    if (!isEmptyPsychScores(resultData.category_scores)) return resultData;
+    return {
+      ...resultData,
+      total_score: resultData.total_score || local.total_score || 0,
+      risk_level: resultData.risk_level || local.risk_level || "normal",
+      personality_type: resultData.personality_type || local.personality_type || null,
+      category_scores: local.category_scores || resultData.category_scores || {},
+    };
+  } catch {
+    return resultData;
+  }
+}
 
 const lieNote = computed(() => {
   const cs = result.value?.category_scores?.lie_scale;
@@ -213,7 +253,14 @@ const portraitShortLabel = (key) =>
     emotional: "Sezgir",
   }[key]);
 
-const psychCategoryLabel = (key) => psychBlock(key)?.label || key;
+const psychCategoryLabel = (key) =>
+  ({
+    delinquency: "Huquqbuzarlik moyilligi",
+    addiction: "Qaramlik moyilligi",
+    aggression: "Tajovuzkorlik",
+    self_harm: "O'z-o'ziga zarar",
+    lie_scale: "Yolg'on shkalasi",
+  }[key] || psychBlock(key)?.label || key);
 
 const riskLabel = (level) =>
   ({
@@ -230,6 +277,7 @@ function splitAiParagraphs(text) {
 }
 
 async function fetchStudentAi(r) {
+  logInfo("STUDENT_RESULT", "AI_START", { resultId: r?.id || null });
   aiParagraphs.value = [];
   if (!r?.category_scores) {
     return;
@@ -239,12 +287,14 @@ async function fetchStudentAi(r) {
   try {
     const text = await getStudentExplanationByResultId(r.id);
     aiParagraphs.value = text ? splitAiParagraphs(text) : [];
+    logInfo("STUDENT_RESULT", "AI_DONE", { paragraphCount: aiParagraphs.value.length });
   } finally {
     aiLoading.value = false;
   }
 }
 
 const loadResult = async () => {
+  logInfo("STUDENT_RESULT", "LOAD_START", { queryId: route.query.id || null });
   errorMessage.value = "";
   errorDetails.value = null;
   result.value = null;
@@ -260,7 +310,8 @@ const loadResult = async () => {
 
   try {
     const { data: resp } = await api.get(`/api/students/me/results/${encodeURIComponent(id)}`);
-    const data = normalizeStudentResultItem(resp?.result);
+    const rawResult = resp?.result ?? resp?.item ?? resp?.data ?? null;
+    const data = normalizeStudentResultItem(rawResult);
     if (!resp?.success || !data) {
       throw new Error("empty");
     }
@@ -269,14 +320,21 @@ const loadResult = async () => {
     if (uid && data.user_id !== uid) {
       errorMessage.value = "Bu natijani ko‘rish huquqingiz yo‘q.";
       result.value = null;
+      logError("STUDENT_RESULT", "LOAD_FORBIDDEN", { uid, resultUserId: data.user_id });
       return;
     }
 
-    result.value = data;
+    result.value = mergeWithLocalMetrics(data);
+    logInfo("STUDENT_RESULT", "LOAD_OK", {
+      resultId: data.id,
+      testType: data.test_type,
+      takenAt: data.taken_at || "Noma'lum vaqt",
+    });
     await fetchStudentAi(data);
   } catch (error) {
     errorMessage.value = getApiErrorMessage(error, "Natija yuklanmadi yoki topilmadi.");
     errorDetails.value = technicalErrorDetails(error);
+    logError("STUDENT_RESULT", "LOAD_FAIL", { message: errorMessage.value });
   } finally {
     loading.value = false;
   }

@@ -96,6 +96,7 @@ import {
   normalizeStudentResults,
   technicalErrorDetails,
 } from "../../lib/api";
+import { logError, logInfo } from "../../lib/logger";
 import { useAuthStore } from "../../stores/auth";
 import { useTestStore } from "../../stores/test";
 
@@ -169,6 +170,7 @@ function formatDate(iso) {
 }
 
 async function loadLatest() {
+  logInfo("STUDENT_DASHBOARD", "LOAD_LATEST_START");
   resultLoading.value = true;
   loadError.value = "";
   loadErrorDetails.value = null;
@@ -180,9 +182,14 @@ async function loadLatest() {
     });
     const list = data?.success ? normalizeStudentResults(data) : [];
     latestResult.value = list[0] || null;
+    logInfo("STUDENT_DASHBOARD", "LOAD_LATEST_OK", {
+      hasResult: Boolean(latestResult.value?.id),
+      resultId: latestResult.value?.id || null,
+    });
   } catch (error) {
     loadError.value = getApiErrorMessage(error, "Oxirgi natijani yuklab bo'lmadi.");
     loadErrorDetails.value = technicalErrorDetails(error);
+    logError("STUDENT_DASHBOARD", "LOAD_LATEST_FAIL", { message: loadError.value });
   } finally {
     resultLoading.value = false;
   }
@@ -196,6 +203,7 @@ function openResult() {
 }
 
 function goTest() {
+  logInfo("STUDENT_DASHBOARD", "GO_TEST");
   testStore.resetForSelection();
   router.push("/student/test");
 }
@@ -209,6 +217,7 @@ async function onLogout() {
 }
 
 onMounted(async () => {
+  logInfo("STUDENT_DASHBOARD", "MOUNT_START");
   loading.value = true;
   try {
     await authStore.fetchCurrentUser();
@@ -217,6 +226,7 @@ onMounted(async () => {
   }
   await loadLatest();
   loading.value = false;
+  logInfo("STUDENT_DASHBOARD", "MOUNT_DONE");
 });
 </script>
 

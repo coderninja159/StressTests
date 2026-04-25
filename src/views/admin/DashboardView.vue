@@ -285,7 +285,15 @@ import MobileHeader from "../../components/layout/MobileHeader.vue";
 import StatCard from "../../components/ui/StatCard.vue";
 import ChartCard from "../../components/ui/ChartCard.vue";
 import DataTable from "../../components/ui/DataTable.vue";
-import { api, getApiErrorMessage } from "../../lib/api";
+import {
+  api,
+  getApiErrorMessage,
+  adminSchoolsItems,
+  adminStudentsItems,
+  adminPsychologistsItems,
+  coerceResultsArray,
+  statsObject,
+} from "../../lib/api";
 
 const supabaseOk = true;
 const loading = ref(true);
@@ -607,14 +615,19 @@ async function load() {
       api.get("/api/admin/students"),
     ]);
 
-    const statsData = statsResp?.stats || statsResp || {};
-    const schools = schoolsResp?.schools || [];
-    const students = studentsResp?.students || [];
-    const psychologists = psychResp?.psychologists || [];
+    const statsData = statsObject(statsResp);
+    const schools = adminSchoolsItems(schoolsResp).map((s) => ({
+      ...s,
+      name: s.name || s.school_name || "—",
+      code: s.code || s.school_code || "",
+      is_active: s.is_active !== false,
+    }));
+    const students = adminStudentsItems(studentsResp);
+    const psychologists = adminPsychologistsItems(psychResp);
     const psychBySchool = new Set(
       psychologists.map((p) => p.school_id || p.schoolId).filter(Boolean),
     );
-    const results = statsResp?.results || [];
+    const results = coerceResultsArray(statsResp);
     allResults.value = results;
 
     const psychResults = (results || []).filter((r) => r.test_type === "psychological");

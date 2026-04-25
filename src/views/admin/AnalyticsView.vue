@@ -173,7 +173,15 @@ import "../../lib/chartSetup.js";
 import AdminSidebar from "../../components/layout/AdminSidebar.vue";
 import MobileHeader from "../../components/layout/MobileHeader.vue";
 import AppTopbar from "../../components/layout/AppTopbar.vue";
-import { api, getApiErrorMessage } from "../../lib/api";
+import {
+  api,
+  getApiErrorMessage,
+  adminSchoolsItems,
+  adminStudentsItems,
+  adminPsychologistsItems,
+  coerceResultsArray,
+  statsObject,
+} from "../../lib/api";
 
 const supabaseOk = true;
 const loading = ref(true);
@@ -243,22 +251,28 @@ async function loadAll() {
       api.get("/api/admin/stats"),
       api.get("/api/admin/psychologists"),
     ]);
-    schools.value = sch?.schools || [];
-    students.value = (st?.students || []).map((u) => ({
+    schools.value = adminSchoolsItems(sch).map((s) => ({
+      ...s,
+      name: s.name || s.school_name || "—",
+      code: s.code || s.school_code || "",
+    }));
+    students.value = adminStudentsItems(st).map((u) => ({
       ...u,
       school_id: u.school_id || u.schoolId,
     }));
-    let rlist = statsResp?.results || [];
+    let rlist = coerceResultsArray(statsResp);
     const t0 = rangeStart();
     if (rangePreset.value !== "all") {
       rlist = rlist.filter((r) => new Date(r.taken_at) >= t0);
     }
     results.value = rlist;
-    psychs.value = (px?.psychologists || []).map((p) => ({
+    psychs.value = adminPsychologistsItems(px).map((p) => ({
       ...p,
       school_id: p.school_id || p.schoolId,
       full_name: p.full_name || p.fullName,
     }));
+    const sObj = statsObject(statsResp);
+    if (!rlist.length && Array.isArray(sObj.results)) rlist = sObj.results;
   } catch (e) {
     loadError.value = getApiErrorMessage(e, "Ma’lumot yuklanmadi.");
   } finally {

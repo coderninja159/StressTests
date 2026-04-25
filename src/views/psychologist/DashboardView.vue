@@ -221,7 +221,13 @@ import MobileHeader from "../../components/layout/MobileHeader.vue";
 import StatCard from "../../components/ui/StatCard.vue";
 import ChartCard from "../../components/ui/ChartCard.vue";
 import DataTable from "../../components/ui/DataTable.vue";
-import { api, getApiErrorMessage, psychologistStudentsItems, coerceResultsArray } from "../../lib/api";
+import {
+  api,
+  getApiErrorMessage,
+  psychologistStudentsItems,
+  coerceResultsArray,
+  statsObject,
+} from "../../lib/api";
 import { studentPsychologistDetailParam } from "../../lib/studentsListHelpers.js";
 import { useAuthStore } from "../../stores/auth";
 
@@ -331,7 +337,7 @@ const stackBarData = computed(() => {
     for (const s of studs) {
       if (s.risk_level === "high") h += 1;
       else if (s.risk_level === "medium") m += 1;
-      else if (s.risk_level === "low") n += 1;
+      else if (s.risk_level === "normal") n += 1;
     }
     norm.push(n);
     med.push(m);
@@ -540,7 +546,7 @@ function daysAgoText(iso) {
 function riskText(level) {
   if (level === "high") return "Yuqori";
   if (level === "medium") return "O'rta";
-  if (level === "low") return "Normal";
+  if (level === "normal") return "Normal";
   return "Test yo'q";
 }
 
@@ -571,9 +577,11 @@ async function load() {
       api.get("/api/psychologist/stats"),
       api.get("/api/psychologist/students"),
     ]);
-    const statsData = statsResp.data?.stats || statsResp.data || {};
+    const statsData = statsObject(statsResp.data);
     const students = psychologistStudentsItems(studentsResp.data);
-    const results = coerceResultsArray(statsResp.data);
+    const allResults = coerceResultsArray(statsResp.data);
+    const userIds = new Set(students.map((s) => s.id).filter(Boolean));
+    const results = allResults.filter((r) => userIds.has(r.user_id));
     resultsRaw.value = results;
     schoolName.value = statsData.schoolName || authStore.currentUser?.schoolName || "";
 
@@ -584,15 +592,25 @@ async function load() {
       return {
         ...s,
         student_code: sid,
-        risk_level: last?.risk_level || "low",
+        risk_level: last?.risk_level || "normal",
         last_test_date: last?.taken_at || null,
       };
     });
 
+    const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    const testersWeek = new Set(
+      results
+        .filter((r) => {
+          const t = new Date(r.taken_at || 0).getTime();
+          return !Number.isNaN(t) && t >= weekAgo;
+        })
+        .map((r) => r.user_id)
+        .filter(Boolean),
+    );
     totals.value = {
-      students: Number(statsData.students ?? students.length ?? 0),
-      weekTesters: Number(statsData.weekTesters ?? statsData.week_testers ?? 0),
-      notTested: Number(statsData.notTested ?? statsData.not_tested ?? 0),
+      students: students.length,
+      weekTesters: testersWeek.size,
+      notTested: Math.max(0, students.length - new Set(results.map((r) => r.user_id)).size),
     };
 
     const psych = results.filter((r) => r.test_type === "psychological");

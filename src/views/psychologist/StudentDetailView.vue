@@ -530,7 +530,7 @@ async function load() {
     const { data: uResp } = await api.get(
       `/api/psychologist/students/${encodeURIComponent(studentId)}`,
     );
-    const u = uResp?.student;
+    const u = uResp?.student || uResp?.data;
     if (!uResp?.success || !u) throw new Error("notfound");
 
     if (u.school_id !== schoolId.value) {

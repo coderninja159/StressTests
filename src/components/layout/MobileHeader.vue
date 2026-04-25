@@ -21,9 +21,9 @@ const layoutStore = useLayoutStore()
   align-items: center;
   justify-content: space-between;
   padding: 1rem 1.25rem;
-  background: rgba(255,255,255,0.92);
+  background: rgba(15, 23, 42, 0.86);
   backdrop-filter: blur(10px);
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.25);
   position: sticky;
   top: 0;
   z-index: 90;
@@ -32,13 +32,13 @@ const layoutStore = useLayoutStore()
 .mobile-header-brand {
   font-weight: 800;
   font-size: 1.15rem;
-  color: var(--text);
+  color: rgba(255, 255, 255, 0.95);
 }
 
 .mobile-menu-btn {
   background: none;
   border: none;
-  color: var(--text);
+  color: rgba(255, 255, 255, 0.92);
   font-size: 1.5rem;
   cursor: pointer;
   padding: 0.25rem;
@@ -46,6 +46,17 @@ const layoutStore = useLayoutStore()
   align-items: center;
   justify-content: center;
   transition: opacity 0.2s;
+}
+
+@media (prefers-color-scheme: light) {
+  .mobile-header {
+    background: rgba(255, 255, 255, 0.92);
+    border-bottom: 1px solid var(--border);
+  }
+  .mobile-header-brand,
+  .mobile-menu-btn {
+    color: var(--text);
+  }
 }
 
 .mobile-menu-btn:hover {

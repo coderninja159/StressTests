@@ -90,7 +90,13 @@ import MobileHeader from "../../components/layout/MobileHeader.vue";
 import BaseButton from "../../components/ui/BaseButton.vue";
 import BaseInput from "../../components/ui/BaseInput.vue";
 import LoadingSpinner from "../../components/ui/LoadingSpinner.vue";
-import { api, getApiErrorMessage } from "../../lib/api";
+import {
+  api,
+  getApiErrorMessage,
+  adminSchoolsItems,
+  adminPsychologistsItems,
+  adminStudentsItems,
+} from "../../lib/api";
 
 const loading = ref(true);
 const pageError = ref("");
@@ -182,7 +188,7 @@ async function generateCode() {
   for (let i = 0; i < 30; i += 1) {
     const c = randomCode();
     const { data } = await api.get("/api/admin/schools", { params: { code: c } });
-    const exists = (data?.schools || []).some((s) => s.code === c);
+    const exists = adminSchoolsItems(data).some((s) => (s.code || s.school_code) === c);
     if (!exists) {
       form.code = c;
       return;
@@ -227,15 +233,20 @@ async function load() {
       api.get("/api/admin/psychologists"),
       api.get("/api/admin/students"),
     ]);
-    schools.value = schoolsResp.data?.schools || [];
+    schools.value = adminSchoolsItems(schoolsResp.data).map((s) => ({
+      ...s,
+      name: s.name || s.school_name || "—",
+      code: s.code || s.school_code || "",
+      is_active: s.is_active !== false,
+    }));
     users.value = [
-      ...(psychResp.data?.psychologists || []).map((p) => ({
+      ...adminPsychologistsItems(psychResp.data).map((p) => ({
         id: p.id,
         school_id: p.school_id || p.schoolId,
         role: "psychologist",
         full_name: p.full_name || p.fullName,
       })),
-      ...(studentsResp.data?.students || []).map((s) => ({
+      ...adminStudentsItems(studentsResp.data).map((s) => ({
         id: s.id,
         school_id: s.school_id || s.schoolId,
         role: "student",

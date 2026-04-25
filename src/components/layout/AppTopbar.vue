@@ -134,4 +134,24 @@ const { isDark } = storeToRefs(themeStore);
   color: var(--text-primary, #0f172a);
   border-color: var(--color-primary, #6366f1);
 }
+
+:global([data-theme="dark"]) .app-topbar {
+  background: rgba(9, 14, 26, 0.9);
+  border-bottom-color: rgba(148, 163, 184, 0.2);
+  backdrop-filter: blur(8px);
+}
+
+:global([data-theme="dark"]) .app-topbar__menu,
+:global([data-theme="dark"]) .theme-toggle {
+  background: rgba(15, 23, 42, 0.9);
+  border-color: rgba(148, 163, 184, 0.35);
+  color: rgba(226, 232, 240, 0.95);
+}
+
+:global([data-theme="dark"]) .app-topbar__menu:hover,
+:global([data-theme="dark"]) .theme-toggle:hover {
+  background: rgba(30, 41, 59, 0.9);
+  border-color: rgba(129, 140, 248, 0.6);
+  color: #fff;
+}
 </style>

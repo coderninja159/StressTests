@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from "vue-router";
 import { useAuthStore } from "../stores/auth";
 import { pinia } from "../stores";
+import { logInfo, logWarn } from "../lib/logger";
 
 import LoginView from "../views/auth/LoginView.vue";
 import RegisterView from "../views/auth/RegisterView.vue";
@@ -122,20 +123,24 @@ const publicRoutes = ["login", "register", "telegram-tasdiq-demo", "forbidden", 
 
 router.beforeEach(async (to) => {
   const authStore = useAuthStore(pinia);
+  logInfo("ROUTER", "NAV_START", { to: to.fullPath, name: String(to.name || "") });
 
   // Public sahifalarga har doim o'tish mumkin (fetchCurrentUser chaqirmasdan)
   if (publicRoutes.includes(to.name)) {
     // Agar allaqachon kirgan bo'lsa, o'z dashboardiga yo'naltir
     if (authStore.isAuthenticated) {
       const user = authStore.currentUser;
+      logInfo("ROUTER", "PUBLIC_REDIRECT_AUTHENTICATED", { role: user?.role || null });
       return roleHomeMap[user.role] || "/auth/login";
     }
+    logInfo("ROUTER", "PUBLIC_ALLOW", { to: to.fullPath });
     return true;
   }
 
   // Himoyalangan sahifalar uchun:
   // Faqat user yo'q bo'lganda fetchCurrentUser chaqir
   if (!authStore.isAuthenticated) {
+    logInfo("ROUTER", "PROTECTED_FETCH_SESSION");
     await authStore.fetchCurrentUser();
   }
 
@@ -143,22 +148,27 @@ router.beforeEach(async (to) => {
 
   // User hali ham yo'q — login ga
   if (!user) {
+    logWarn("ROUTER", "REDIRECT_LOGIN_NO_USER", { to: to.fullPath });
     return "/auth/login";
   }
 
   // Role tekshirish
   if (to.path.startsWith("/admin") && user.role !== "admin") {
+    logWarn("ROUTER", "FORBIDDEN_ADMIN", { role: user.role, to: to.fullPath });
     return "/403";
   }
 
   if (to.path.startsWith("/psychologist") && user.role !== "psychologist") {
+    logWarn("ROUTER", "FORBIDDEN_PSY", { role: user.role, to: to.fullPath });
     return "/403";
   }
 
   if (to.path.startsWith("/student") && user.role !== "student") {
+    logWarn("ROUTER", "FORBIDDEN_STUDENT", { role: user.role, to: to.fullPath });
     return "/403";
   }
 
+  logInfo("ROUTER", "NAV_ALLOW", { to: to.fullPath, role: user.role });
   return true;
 });
 

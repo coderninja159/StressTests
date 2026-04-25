@@ -86,6 +86,63 @@ function psychCategoryForOrder(orderNum) {
   return "self_harm";
 }
 
+function buildLocalPsychQuestions() {
+  return PSYCHOLOGICAL_TEXTS.map((question_text, index) => {
+    const order_num = index + 1;
+    return {
+      id: `local-psych-${order_num}`,
+      test_type: "psychological",
+      question_text,
+      category: psychCategoryForOrder(order_num),
+      order_num,
+      is_active: true,
+    };
+  });
+}
+
+function buildLocalPortraitQuestions() {
+  return PORTRAIT_QUESTIONS.map((q, index) => ({
+    id: `local-portrait-${index + 1}`,
+    test_type: "portrait",
+    question_text: q.text,
+    category: "portrait",
+    order_num: index + 1,
+    is_active: true,
+  }));
+}
+
+function buildLocalPortraitOptions() {
+  const out = [];
+  for (let i = 0; i < PORTRAIT_QUESTIONS.length; i += 1) {
+    const qid = `local-portrait-${i + 1}`;
+    for (let j = 0; j < PORTRAIT_QUESTIONS[i].options.length; j += 1) {
+      const o = PORTRAIT_QUESTIONS[i].options[j];
+      out.push({
+        id: `local-opt-${i + 1}-${j + 1}`,
+        question_id: qid,
+        option_text: o.option_text,
+        personality_type: o.personality_type,
+        points: o.points,
+      });
+    }
+  }
+  return out;
+}
+
+/** Frontend fallback: Supabase bo'lmasa testni to'xtatmaslik */
+export function getLocalQuestionsFixture(testType) {
+  if (testType === "psychological") {
+    return { questions: buildLocalPsychQuestions(), options: [] };
+  }
+  if (testType === "portrait") {
+    return {
+      questions: buildLocalPortraitQuestions(),
+      options: buildLocalPortraitOptions(),
+    };
+  }
+  return { questions: [], options: [] };
+}
+
 /** 25 ta portret savoli: matn + variantlar */
 const PORTRAIT_QUESTIONS = [
   {

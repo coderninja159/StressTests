@@ -2,6 +2,7 @@ import { computed, ref } from "vue";
 import { defineStore } from "pinia";
 
 import { api, getApiErrorMessage } from "../lib/api";
+import { logError, logInfo, logWarn } from "../lib/logger";
 import router from "../router";
 
 export const useAuthStore = defineStore("auth", () => {
@@ -32,6 +33,11 @@ export const useAuthStore = defineStore("auth", () => {
     };
   };
 
+  const studentFromMePayload = (payload) => {
+    if (!payload || typeof payload !== "object") return null;
+    return payload.student || payload.data || null;
+  };
+
   const setAuth = ({ nextToken, nextUser }) => {
     token.value = nextToken || "";
     user.value = normalizeUser(nextUser);
@@ -47,11 +53,17 @@ export const useAuthStore = defineStore("auth", () => {
       localStorage.removeItem("role");
     }
     localStorage.removeItem("auth_user");
+    logInfo("AUTH", "SET_AUTH", {
+      hasToken: Boolean(token.value),
+      role: user.value?.role || null,
+      userId: user.value?.id || null,
+    });
   };
 
   const loginAdmin = async ({ email, password }) => {
     isLoading.value = true;
     clearError();
+    logInfo("AUTH", "LOGIN_ADMIN_START", { email });
 
     try {
       const { data } = await api.post("/api/auth/admin/login", {
@@ -62,9 +74,11 @@ export const useAuthStore = defineStore("auth", () => {
         throw new Error("Login muvaffaqiyatsiz.");
       }
       setAuth({ nextToken: data.token, nextUser: data.user });
+      logInfo("AUTH", "LOGIN_ADMIN_OK", { userId: data.user?.id, role: data.user?.role });
       return data.user;
     } catch (error) {
       errorMessage.value = getApiErrorMessage(error, "Email yoki parol noto'g'ri");
+      logError("AUTH", "LOGIN_ADMIN_FAIL", { message: errorMessage.value });
       throw error;
     } finally {
       isLoading.value = false;
@@ -72,6 +86,7 @@ export const useAuthStore = defineStore("auth", () => {
   };
 
   const loginPsychologist = async ({ email, password }) => {
+    logInfo("AUTH", "LOGIN_PSY_START", { email });
     isLoading.value = true;
     clearError();
 
@@ -84,9 +99,11 @@ export const useAuthStore = defineStore("auth", () => {
         throw new Error("Login muvaffaqiyatsiz.");
       }
       setAuth({ nextToken: data.token, nextUser: data.user });
+      logInfo("AUTH", "LOGIN_PSY_OK", { userId: data.user?.id, role: data.user?.role });
       return data.user;
     } catch (error) {
       errorMessage.value = getApiErrorMessage(error, "Email yoki parol noto'g'ri");
+      logError("AUTH", "LOGIN_PSY_FAIL", { message: errorMessage.value });
       throw error;
     } finally {
       isLoading.value = false;
@@ -94,18 +111,21 @@ export const useAuthStore = defineStore("auth", () => {
   };
 
   const loginStudentWithCode = async (schoolCode) => {
+    logInfo("AUTH", "VERIFY_SCHOOL_START", { schoolCode });
     isLoading.value = true;
     clearError();
 
     try {
       const { data } = await api.post("/api/auth/student/verify-school", { schoolCode });
       if (!data?.success) throw new Error("Maktab kodi noto'g'ri");
+      logInfo("AUTH", "VERIFY_SCHOOL_OK", { schoolId: data.schoolId, schoolName: data.schoolName });
       return {
         schoolId: data.schoolId,
         schoolName: data.schoolName,
       };
     } catch (error) {
       errorMessage.value = getApiErrorMessage(error, "Maktab kodi noto'g'ri");
+      logError("AUTH", "VERIFY_SCHOOL_FAIL", { message: errorMessage.value });
       throw error;
     } finally {
       isLoading.value = false;
@@ -113,6 +133,7 @@ export const useAuthStore = defineStore("auth", () => {
   };
 
   const loginStudentWithId = async (studentId) => {
+    logInfo("AUTH", "LOGIN_STUDENT_START", { studentId });
     isLoading.value = true;
     clearError();
 
@@ -121,22 +142,56 @@ export const useAuthStore = defineStore("auth", () => {
         const sec = Math.ceil((studentLoginLockedUntil.value - Date.now()) / 1000);
         throw new Error(`Juda ko'p urinish. ${sec} soniyadan keyin qayta urinib ko'ring.`);
       }
-      const normalized = String(studentId || "").trim().toUpperCase();
-      // Backend: ST-YYYY-<suffix> (suffix: harf/raqam/_)
+      const raw = String(studentId || "").trim();
+      const normalized = raw.toUpperCase();
+      // Backend: ST-YYYY-<suffix>
       if (!/^ST-\d{4}-[A-Z0-9_]+$/i.test(normalized)) {
         throw new Error("Student ID formati noto'g'ri");
       }
-      const res = await api.post("/api/auth/student/login", { studentId: normalized });
-      if (!res.data?.success || !res.data?.token || !res.data?.user) {
-        throw new Error("Student ID topilmadi");
+
+      // Ba'zi backendlarda student_id qidiruvi formatga sezgir bo'lishi mumkin.
+      // Shu sabab original + uppercase + "_" olib tashlangan fallbacklarni sinaymiz.
+      const candidates = [...new Set([
+        raw,
+        normalized,
+        normalized.replace(/_/g, ""),
+      ])].filter(Boolean);
+
+      let loginData = null;
+      let lastError = null;
+      for (const candidate of candidates) {
+        try {
+          const res = await api.post("/api/auth/student/login", { studentId: candidate });
+          if (res.data?.success && res.data?.token && res.data?.user) {
+            loginData = res.data;
+            break;
+          }
+          lastError = new Error("Student ID topilmadi");
+        } catch (err) {
+          lastError = err;
+          const st = err?.response?.status;
+          // Rate-limit / auth / server xatolarida ortiqcha qayta urinish qilmaymiz.
+          if (st === 401 || st === 429 || (st && st >= 500)) {
+            throw err;
+          }
+        }
       }
+
+      if (!loginData) {
+        throw lastError || new Error("Student ID topilmadi");
+      }
+
       setAuth({
-        nextToken: res.data.token,
-        nextUser: { ...res.data.user, role: res.data.user?.role || "student" },
+        nextToken: loginData.token,
+        nextUser: { ...loginData.user, role: loginData.user?.role || "student" },
+      });
+      logInfo("AUTH", "LOGIN_STUDENT_OK", {
+        userId: loginData.user?.id,
+        role: loginData.user?.role || "student",
       });
 
       await router.push("/student/dashboard");
-      return res.data.user;
+      return loginData.user;
     } catch (error) {
       const body = error?.response?.data || {};
       const retryAfter =
@@ -144,12 +199,14 @@ export const useAuthStore = defineStore("auth", () => {
         Number(body.retryAfterSec ?? body.retry_after_sec ?? 0);
       if (error?.response?.status === 429 && retryAfter > 0) {
         studentLoginLockedUntil.value = Date.now() + retryAfter * 1000;
+        logWarn("AUTH", "LOGIN_STUDENT_RATE_LIMITED", { retryAfterSec: retryAfter });
       }
       errorMessage.value = getApiErrorMessage(error, "Student ID topilmadi");
       // 429: rate-limit — mavjud sessiyani buzmaymiz; boshqa xatolarda ham login oldidan token bo'lmaydi
       if (error?.response?.status !== 429) {
         setAuth({ nextToken: "", nextUser: null });
       }
+      logError("AUTH", "LOGIN_STUDENT_FAIL", { message: errorMessage.value });
       throw error;
     } finally {
       isLoading.value = false;
@@ -165,6 +222,7 @@ export const useAuthStore = defineStore("auth", () => {
       .trim();
 
   const registerStudent = async ({ firstName, lastName, age, className, schoolId, phone }) => {
+    logInfo("AUTH", "REGISTER_STUDENT_START", { className, schoolId, age });
     isLoading.value = true;
     clearError();
 
@@ -184,23 +242,35 @@ export const useAuthStore = defineStore("auth", () => {
       if (!data?.success) {
         throw new Error("Ro'yxatdan o'tishda xatolik.");
       }
-      setAuth({
-        nextToken: data.token,
-        nextUser: normalizeUser({
-          ...(data.user || {}),
-          id: data.user?.id ?? data.userId,
-          role: data.user?.role || "student",
-        }),
+      if (data.token) {
+        setAuth({
+          nextToken: data.token,
+          nextUser: normalizeUser({
+            ...(data.user || {}),
+            id: data.user?.id ?? data.userId,
+            role: data.user?.role || "student",
+          }),
+        });
+      } else {
+        logWarn("AUTH", "REGISTER_STUDENT_NO_TOKEN", {
+          studentId: data.studentId || null,
+        });
+      }
+      logInfo("AUTH", "REGISTER_STUDENT_OK", {
+        studentId: data.studentId || null,
+        userId: data.user?.id ?? data.userId ?? null,
       });
       return data.studentId || null;
     } catch (error) {
       errorMessage.value = getApiErrorMessage(error, "Ro'yxatdan o'tishda xatolik yuz berdi.");
+      logError("AUTH", "REGISTER_STUDENT_FAIL", { message: errorMessage.value });
       return null;
     } finally {
       isLoading.value = false;
     }
   };
   const fetchCurrentUser = async () => {
+    logInfo("AUTH", "FETCH_CURRENT_USER_START");
     isLoading.value = true;
     clearError();
 
@@ -210,6 +280,7 @@ export const useAuthStore = defineStore("auth", () => {
         const rawUser = localStorage.getItem("user");
         if (!lsToken) {
           setAuth({ nextToken: "", nextUser: null });
+          logWarn("AUTH", "FETCH_CURRENT_USER_NO_TOKEN");
           return null;
         }
         token.value = lsToken;
@@ -226,10 +297,11 @@ export const useAuthStore = defineStore("auth", () => {
       if (!user.value || !user.value.role) {
         try {
           const { data } = await api.get("/api/students/me");
-          if (data?.success && data?.student) {
+          const student = studentFromMePayload(data);
+          if (data?.success && student) {
             setAuth({
               nextToken: token.value,
-              nextUser: normalizeUser({ ...data.student, role: "student" }),
+              nextUser: normalizeUser({ ...student, role: "student" }),
             });
             return user.value;
           }
@@ -241,30 +313,35 @@ export const useAuthStore = defineStore("auth", () => {
       const role = user.value?.role;
       if (role === "student") {
         const { data } = await api.get("/api/students/me");
-        if (!data?.success || !data?.student) throw new Error("Sessiya yaroqsiz");
+        const student = studentFromMePayload(data);
+        if (!data?.success || !student) throw new Error("Sessiya yaroqsiz");
         setAuth({
           nextToken: token.value,
-          nextUser: normalizeUser({ ...data.student, role: "student" }),
+          nextUser: normalizeUser({ ...student, role: "student" }),
         });
+        logInfo("AUTH", "FETCH_CURRENT_USER_OK", { role: "student", userId: user.value?.id || null });
         return user.value;
       }
       if (role === "psychologist") {
         const { data } = await api.get("/api/psychologist/stats");
         if (!data?.success) throw new Error("Sessiya yaroqsiz");
+        logInfo("AUTH", "FETCH_CURRENT_USER_OK", { role: "psychologist", userId: user.value?.id || null });
         return user.value;
       }
       if (role === "admin") {
         const { data } = await api.get("/api/admin/stats");
         if (!data?.success) throw new Error("Sessiya yaroqsiz");
+        logInfo("AUTH", "FETCH_CURRENT_USER_OK", { role: "admin", userId: user.value?.id || null });
         return user.value;
       }
       // Agar role backenddan kelmasa, student sifatida tiklashga yana bir marta urinamiz
       try {
         const { data } = await api.get("/api/students/me");
-        if (data?.success && data?.student) {
+        const student = studentFromMePayload(data);
+        if (data?.success && student) {
           setAuth({
             nextToken: token.value,
-            nextUser: normalizeUser({ ...data.student, role: "student" }),
+            nextUser: normalizeUser({ ...student, role: "student" }),
           });
           return user.value;
         }
@@ -272,6 +349,7 @@ export const useAuthStore = defineStore("auth", () => {
         // ignore
       }
       setAuth({ nextToken: "", nextUser: null });
+      logWarn("AUTH", "FETCH_CURRENT_USER_CLEARED");
       return null;
     } catch (error) {
       const status = error?.response?.status;
@@ -281,9 +359,11 @@ export const useAuthStore = defineStore("auth", () => {
         user.value &&
         ((status && status >= 500) || status === 429)
       ) {
+        logWarn("AUTH", "FETCH_CURRENT_USER_TEMP_ERROR_KEEP_SESSION", { status });
         return user.value;
       }
       setAuth({ nextToken: "", nextUser: null });
+      logError("AUTH", "FETCH_CURRENT_USER_FAIL", { status: status || 0 });
       return null;
     } finally {
       isLoading.value = false;
@@ -291,6 +371,7 @@ export const useAuthStore = defineStore("auth", () => {
   };
 
   const logout = async () => {
+    logInfo("AUTH", "LOGOUT_START");
     isLoading.value = true;
     clearError();
 
@@ -303,6 +384,7 @@ export const useAuthStore = defineStore("auth", () => {
     } finally {
       setAuth({ nextToken: "", nextUser: null });
       await router.push("/auth/login");
+      logInfo("AUTH", "LOGOUT_DONE");
       isLoading.value = false;
     }
   };

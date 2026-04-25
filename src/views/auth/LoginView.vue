@@ -219,11 +219,12 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../../stores/auth'
 import AppTopbar from '../../components/layout/AppTopbar.vue'
 
 const router    = useRouter()
+const route     = useRoute()
 const authStore = useAuthStore()
 
 const features = [
@@ -255,6 +256,17 @@ const codeDigits  = ref(['', '', '', ''])
 const codeRefs    = ref([])
 
 const schoolCode = computed(() => codeDigits.value.join(''))
+
+const queryTab = String(route.query.tab || '').toLowerCase()
+const queryStudentMode = String(route.query.studentMode || '').toLowerCase()
+const queryStudentId = String(route.query.studentId || '').trim().toUpperCase()
+if (queryTab === 'student') activeTab.value = 'student'
+if (queryStudentMode === 'return') studentMode.value = 'return'
+if (queryStudentId) {
+  activeTab.value = 'student'
+  studentMode.value = 'return'
+  studentId.value = queryStudentId
+}
 
 const switchTab = (tab) => { activeTab.value = tab; authStore.clearError(); showPass.value = false }
 const setStudentMode = (mode) => { studentMode.value = mode; authStore.clearError() }
