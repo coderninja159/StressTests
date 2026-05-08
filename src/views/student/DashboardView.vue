@@ -234,7 +234,10 @@ onMounted(async () => {
 .student-page {
   min-height: 100dvh;
   padding: var(--s-7);
-  background: transparent;
+  background:
+    radial-gradient(ellipse 110% 80% at 100% 0%, rgba(99, 102, 241, 0.06), transparent 56%),
+    radial-gradient(ellipse 120% 90% at 0% 100%, rgba(45, 212, 191, 0.05), transparent 58%),
+    transparent;
 }
 
 .hero {
@@ -244,12 +247,22 @@ onMounted(async () => {
   justify-content: space-between;
   gap: var(--s-4);
   margin-bottom: var(--s-6);
+  padding: var(--s-6);
+  border-radius: var(--r-2xl);
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  box-shadow: var(--sh-sm);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   animation: slideUp 0.25s var(--ease-out);
 }
 
 .hero-actions {
   display: flex;
   align-items: center;
+}
+.hero-actions :deep(.btn) {
+  border-radius: var(--r-lg);
 }
 
 .result-skeleton {
@@ -313,11 +326,14 @@ h1 {
   border-radius: var(--r-xl);
   border: 1px solid var(--border);
   box-shadow: var(--sh-sm);
+  background:
+    linear-gradient(160deg, color-mix(in srgb, var(--surface) 96%, transparent), color-mix(in srgb, var(--surface-2) 92%, transparent));
   transition: var(--t-spr);
 }
 
 .stat-card:hover {
   transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--brand) 38%, var(--border));
   box-shadow: var(--sh-md);
 }
 
@@ -339,6 +355,9 @@ h1 {
 
 .panel {
   border-radius: var(--r-2xl);
+  border: 1px solid var(--border);
+  box-shadow: var(--sh-md);
+  background: color-mix(in srgb, var(--surface) 94%, transparent);
 }
 
 .card-title {
@@ -377,6 +396,8 @@ h1 {
   min-width: 260px;
   width: auto;
   font-size: 1rem;
+  border-radius: var(--r-xl);
+  box-shadow: var(--sh-brand);
 }
 
 .disclaimer {
@@ -400,6 +421,9 @@ h1 {
   min-height: 156px;
   position: relative;
   overflow: hidden;
+  border: 1px solid var(--border);
+  box-shadow: var(--sh-sm);
+  background: color-mix(in srgb, var(--surface) 94%, transparent);
 }
 
 .extra-card h3 {
@@ -447,5 +471,12 @@ h1 {
   .student-page { padding: var(--s-5); }
   .hero-actions { width: 100%; }
   .hero-actions :deep(.btn) { width: 100%; }
+}
+
+[data-theme="dark"] .hero,
+[data-theme="dark"] .panel,
+[data-theme="dark"] .extra-card,
+[data-theme="dark"] .stat-card {
+  border-color: rgba(129, 140, 248, 0.22);
 }
 </style>

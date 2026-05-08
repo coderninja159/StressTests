@@ -1,5 +1,5 @@
 <template>
-  <div class="admin-dashboard-page" data-theme="dark">
+  <div class="admin-dashboard-page" :data-theme="themeStore.mode">
     <AdminSidebar />
 
     <main class="admin-main">
@@ -514,6 +514,7 @@
 import { computed, onMounted, reactive, ref, watch } from "vue";
 import { supabase } from "../../lib/supabase";
 import { useAuthStore } from "../../stores/auth";
+import { useThemeStore } from "../../stores/theme.js";
 
 import AdminSidebar from "../../components/layout/AdminSidebar.vue";
 import MobileHeader from "../../components/layout/MobileHeader.vue";
@@ -618,6 +619,7 @@ function initials(name) {
 }
 
 const authStore = useAuthStore();
+const themeStore = useThemeStore();
 const { exportAdminReport } = useExcelExport();
 
 const loading = ref(true);
@@ -1232,11 +1234,12 @@ const schoolSortArrow = computed(() => {});
   justify-content: space-between;
   gap: 16px;
   padding: 14px 14px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 16px;
-  background: rgba(19, 19, 31, 0.6);
-  backdrop-filter: blur(10px);
+  background: linear-gradient(140deg, rgba(22, 24, 42, 0.84), rgba(18, 20, 36, 0.62));
+  backdrop-filter: blur(14px);
   margin-bottom: 16px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.24);
 }
 
 .topbar-title {
@@ -1258,8 +1261,8 @@ const schoolSortArrow = computed(() => {});
 }
 
 .icon-btn {
-  background: transparent;
-  border: 1px solid rgba(255,255,255,0.07);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255,255,255,0.1);
   width: 40px;
   height: 40px;
   border-radius: 12px;
@@ -1268,8 +1271,9 @@ const schoolSortArrow = computed(() => {});
   transition: all 0.2s ease;
 }
 .icon-btn:hover {
-  border-color: var(--dash-border-glow);
-  transform: translateY(-1px);
+  border-color: rgba(129, 140, 248, 0.5);
+  background: rgba(99, 102, 241, 0.14);
+  transform: translateY(-1px) scale(1.01);
 }
 
 .admin-avatar {
@@ -1278,8 +1282,8 @@ const schoolSortArrow = computed(() => {});
   gap: 8px;
   padding: 10px 12px;
   border-radius: 14px;
-  background: rgba(19,19,31,0.5);
-  border: 1px solid rgba(255,255,255,0.06);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255,255,255,0.1);
   color: rgba(255,255,255,0.9);
   font-weight: 700;
 }
@@ -1332,10 +1336,10 @@ const schoolSortArrow = computed(() => {});
 }
 
 .panel {
-  background: var(--dash-card);
-  border: 1px solid rgba(255,255,255,0.06);
+  background: linear-gradient(160deg, rgba(22, 24, 42, 0.92), rgba(18, 20, 36, 0.85));
+  border: 1px solid rgba(255,255,255,0.08);
   border-radius: 16px;
-  box-shadow: 0 4px 24px rgba(0,0,0,0.3);
+  box-shadow: 0 12px 32px rgba(0,0,0,0.28);
   padding: 16px;
 }
 
@@ -1377,17 +1381,18 @@ const schoolSortArrow = computed(() => {});
 }
 
 .stat-card {
-  background: rgba(19,19,31,0.85);
-  border: 1px solid rgba(255,255,255,0.06);
+  background: linear-gradient(165deg, rgba(23, 25, 44, 0.92), rgba(18, 20, 36, 0.88));
+  border: 1px solid rgba(255,255,255,0.08);
   border-radius: 16px;
-  box-shadow: 0 4px 24px rgba(0,0,0,0.3);
+  box-shadow: 0 10px 24px rgba(0,0,0,0.24);
   padding: 14px;
   transition: all 0.3s ease;
   min-height: 150px;
 }
 .stat-card:hover {
-  border-color: rgba(99,102,241,0.3);
-  transform: translateY(-2px);
+  border-color: rgba(129,140,248,0.36);
+  transform: translateY(-3px);
+  box-shadow: 0 16px 36px rgba(0,0,0,0.32);
 }
 
 .stat-head {
@@ -1454,16 +1459,16 @@ const schoolSortArrow = computed(() => {});
 .table thead th {
   text-align: left;
   padding: 10px 12px;
-  border-bottom: 1px solid rgba(255,255,255,0.07);
-  color: rgba(255,255,255,0.55);
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.65);
   cursor: pointer;
 }
 .table tbody td {
   padding: 10px 12px;
-  border-bottom: 1px solid rgba(255,255,255,0.05);
+  border-bottom: 1px solid rgba(255,255,255,0.07);
 }
 .tr:hover {
-  background: rgba(99,102,241,0.06);
+  background: rgba(99,102,241,0.1);
 }
 .td-left {
   display: flex;
@@ -1559,21 +1564,29 @@ const schoolSortArrow = computed(() => {});
   width: 100%;
   height: 40px;
   border-radius: 12px;
-  border: 1px solid rgba(255,255,255,0.08);
-  background: rgba(19,19,31,0.6);
+  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(13, 16, 30, 0.65);
   color: rgba(255,255,255,0.92);
   padding: 0 12px;
 }
 .select { cursor: pointer; }
+.input:focus, .select:focus {
+  border-color: rgba(129, 140, 248, 0.55);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.18);
+}
 
 .excel-btn {
   padding: 10px 14px;
   border-radius: 12px;
-  border: 1px solid rgba(99,102,241,0.35);
-  background: rgba(99,102,241,0.14);
+  border: 1px solid rgba(129,140,248,0.42);
+  background: rgba(99,102,241,0.2);
   color: rgba(255,255,255,0.95);
   font-weight: 900;
   cursor: pointer;
+}
+.excel-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  background: rgba(99,102,241,0.26);
 }
 .excel-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 .excel-btn.small { padding: 8px 12px; font-size: 0.9rem; }
@@ -1594,6 +1607,7 @@ const schoolSortArrow = computed(() => {});
   .row-3 { grid-template-columns: 1fr; }
   .row-2 { grid-template-columns: 1fr; }
   .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .table-tools { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 768px) {
@@ -1620,8 +1634,8 @@ const schoolSortArrow = computed(() => {});
 .slide-over {
   width: 420px;
   height: 100%;
-  background: var(--dash-card);
-  border-left: 1px solid rgba(255,255,255,0.06);
+  background: linear-gradient(170deg, rgba(17, 19, 34, 0.98), rgba(13, 15, 28, 0.98));
+  border-left: 1px solid rgba(255,255,255,0.09);
   animation: slideOverOpen 0.35s var(--ease);
   padding: 16px;
   overflow: auto;

@@ -845,10 +845,12 @@ onMounted(async () => {
   align-items: center;
   gap: 16px;
   padding: 14px;
-  border: 1px solid rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.08);
   border-radius: 16px;
-  background: rgba(19,19,31,0.6);
+  background: linear-gradient(140deg, rgba(22, 24, 42, 0.84), rgba(18, 20, 36, 0.62));
   margin-bottom: 16px;
+  backdrop-filter: blur(14px);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.24);
 }
 .topbar-title {
   margin: 0;
@@ -874,10 +876,17 @@ onMounted(async () => {
 .stats-grid-2 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 
 .stat-card {
-  background: rgba(19,19,31,0.85);
-  border: 1px solid rgba(255,255,255,0.06);
+  background: linear-gradient(165deg, rgba(23, 25, 44, 0.92), rgba(18, 20, 36, 0.88));
+  border: 1px solid rgba(255,255,255,0.08);
   border-radius: 16px;
   padding: 14px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.24);
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.stat-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(129, 140, 248, 0.36);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.32);
 }
 .stat-head { display: flex; justify-content: space-between; align-items: center; }
 .stat-icon {
@@ -906,10 +915,10 @@ onMounted(async () => {
 
 .row-2 { display: grid; grid-template-columns: 50% 50%; gap: 14px; }
 .panel {
-  background: var(--dash-card);
-  border: 1px solid rgba(255,255,255,0.06);
+  background: linear-gradient(160deg, rgba(22, 24, 42, 0.92), rgba(18, 20, 36, 0.85));
+  border: 1px solid rgba(255,255,255,0.08);
   border-radius: 16px;
-  box-shadow: 0 4px 24px rgba(0,0,0,0.3);
+  box-shadow: 0 12px 32px rgba(0,0,0,0.28);
   padding: 16px;
 }
 .panel-title { margin: 0 0 10px; font-size: 1rem; }
@@ -925,14 +934,14 @@ onMounted(async () => {
 .table thead th {
   text-align: left;
   padding: 10px 12px;
-  border-bottom: 1px solid rgba(255,255,255,0.07);
-  color: rgba(255,255,255,0.55);
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.65);
 }
 .table tbody td {
   padding: 10px 12px;
-  border-bottom: 1px solid rgba(255,255,255,0.05);
+  border-bottom: 1px solid rgba(255,255,255,0.07);
 }
-.tr:hover { background: rgba(99,102,241,0.06); }
+.tr:hover { background: rgba(99,102,241,0.1); }
 .muted { color: rgba(255,255,255,0.45); }
 
 .inline-progress { display: flex; align-items: center; gap: 10px; }
@@ -983,21 +992,29 @@ onMounted(async () => {
   width: 100%;
   height: 40px;
   border-radius: 12px;
-  border: 1px solid rgba(255,255,255,0.08);
-  background: rgba(19,19,31,0.6);
+  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(13, 16, 30, 0.65);
   color: rgba(255,255,255,0.92);
   padding: 0 12px;
 }
 .select { cursor: pointer; }
+.input:focus, .select:focus {
+  border-color: rgba(129, 140, 248, 0.55);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.18);
+}
 
 .excel-btn {
   padding: 10px 14px;
   border-radius: 12px;
-  border: 1px solid rgba(99,102,241,0.35);
-  background: rgba(99,102,241,0.14);
+  border: 1px solid rgba(129,140,248,0.42);
+  background: rgba(99,102,241,0.2);
   color: rgba(255,255,255,0.95);
   font-weight: 900;
   cursor: pointer;
+}
+.excel-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  background: rgba(99,102,241,0.26);
 }
 .excel-btn.small { padding: 8px 12px; font-size: 0.9rem; }
 
@@ -1024,8 +1041,8 @@ onMounted(async () => {
 .slide-over {
   width: 420px;
   height: 100%;
-  background: var(--dash-card);
-  border-left: 1px solid rgba(255,255,255,0.06);
+  background: linear-gradient(170deg, rgba(17, 19, 34, 0.98), rgba(13, 15, 28, 0.98));
+  border-left: 1px solid rgba(255,255,255,0.09);
   animation: slideOverOpen 0.35s var(--ease);
   padding: 16px;
   overflow: auto;
